@@ -5,7 +5,9 @@ import HttpException from './HttpException.js';
 const routes = { GET: {}, POST: {} };
 
 export function getServerUrl() {
-  return `http://localhost:${process.env.APP_WEBSERVER_PORT}`;
+  const port = parseInt(process.env.APP_WEBSERVER_PORT, 10);
+  const portString = port === 80 ? '' : `:${port}`;
+  return `http://localhost${portString}`;
 }
 
 function handleError(error, response) {
