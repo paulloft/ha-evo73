@@ -10,7 +10,7 @@ env.env('local').env();
 
 if (!process.env.APP_PHONE_NUMBER) {
   console.warn('[ERROR] Номер телефона не указан в настройках окружения');
-  console.info('[INFO] Создайте файл .env.local с содержимым APP_PHONE_NUMBER=79876543210');
+  console.info('[INFO] Создайте файл .env.local с содержимым APP_PHONE_NUMBER=79000000000');
   process.exit(1);
 }
 

@@ -1,8 +1,0 @@
-#!/usr/bin/with-contenv bashio
-# shellcheck shell=bash
-
-APP_PHONE_NUMBER=$(bashio::config 'phone_number') \
-APP_WEBHOOK_URL=$(bashio::config 'webhook_url') \
-APP_WEBSERVER_PORT=$(bashio::config 'webserver_port') \
-APP_STORAGE_DIR=/config \
-node /app/src/index.js

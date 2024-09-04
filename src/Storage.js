@@ -1,22 +1,11 @@
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { readFileSync, writeFile } from 'node:fs';
-import { fileURLToPath } from 'url';
-
-function getStorageDir() {
-  if (process.env.APP_STORAGE_DIR) {
-    return process.env.APP_STORAGE_DIR;
-  }
-
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  return resolve(__dirname, '../var');
-}
+import { getPathApp } from './Helpers.js';
 
 const storage = {};
-const storagePath = getStorageDir();
 
 function getFilename(key) {
-  return `${storagePath}/${key}`;
+  return `${resolve(getPathApp(), process.env.APP_STORAGE_DIR)}/${key}`;
 }
 
 function get(key) {
