@@ -1,3 +1,12 @@
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'node:path';
+
+export function getPathApp() {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  return resolve(__dirname, '../');
+}
+
 export function isEmptyValue(value) {
   return value === null
     || value === ''
