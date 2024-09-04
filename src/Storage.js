@@ -2,10 +2,18 @@ import { dirname, resolve } from 'node:path';
 import { readFileSync, writeFile } from 'node:fs';
 import { fileURLToPath } from 'url';
 
+function getStorageDir() {
+  if (process.env.APP_STORAGE_DIR) {
+    return process.env.APP_STORAGE_DIR;
+  }
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  return resolve(__dirname, '../var');
+}
+
 const storage = {};
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const storagePath = resolve(__dirname, '../var');
+const storagePath = getStorageDir();
 
 function getFilename(key) {
   return `${storagePath}/${key}`;
