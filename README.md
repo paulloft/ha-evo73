@@ -15,8 +15,6 @@
 
 ## Запуск интеграции
 
-Для запуска необходим установленный [NodeJS](https://nodejs.org/en)
-
 #### Предварительная настройка
 Создать в корневой директории файл .env.local c содержимым
 ```
@@ -27,12 +25,19 @@ APP_WEBHOOK_URL=https://my.homeassistant/api/webhook/-qbR-HOEfA_dQC40NHEJgsyTH
 ```
 
 #### Запуск
+Для запуска необходим установленный [NodeJS](https://nodejs.org/en)
+
+Установить зависимые пакеты
+```
+npm i
+```
+
 Для запуска в ручном режиме
 ```
 node ./src/index.js
 ```
 
-Для работы в фоновом режиме можно установить пакет [pm2](https://pm2.keymetrics.io/)
+Для работы в фоновом режиме можно установить утилиту [pm2](https://pm2.keymetrics.io/)
 ```
 pm2 start ./src/index.js
 ```
