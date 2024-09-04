@@ -1,6 +1,8 @@
-# Интеграция домофона компании EVO73 в Home Assistant
+# Интеграция домофона EVO73 в Home Assistant
 
-Работа интеграции возможна только с домофонами компании [EVO](https://www.evo73.ru/)
+Работа дополнения возможна только с домофонами компании [EVO](https://www.evo73.ru/)
+
+[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fpaulloft%2Fha-evo73)
 
 ## Возможности интеграции
 - Открытие двери
@@ -8,41 +10,12 @@
 - Получение ссылки на стрим с камеры
 - Получение изображения с камеры
 
-## Чеклист для правильной работы интеграции
+## Чек-лист для правильной работы интеграции
 - Домофон с камерой от компании EVO
 - Наличие зарегистрированного аккаунта с возможностью входа в мобильное приложение
 - Оплаченный тариф
 
-## Запуск интеграции
-
-#### Предварительная настройка
-Создать в корневой директории файл .env.local c содержимым
-```
-# Номер телефона зарегистрированного аккаунта в формате 79000000000 
-APP_PHONE_NUMBER=79000000000
-# URL вебхука
-APP_WEBHOOK_URL=https://my.homeassistant/api/webhook/-qbR-HOEfA_dQC40NHEJgsyTH
-```
-
-#### Запуск
-Для запуска необходим установленный [NodeJS](https://nodejs.org/en)
-
-Установить зависимые пакеты
-```
-npm i
-```
-
-Для запуска в ручном режиме
-```
-node ./src/index.js
-```
-
-Для работы в фоновом режиме можно установить утилиту [pm2](https://pm2.keymetrics.io/)
-```
-pm2 start ./src/index.js
-```
-
-#### Первичная авторизация
+## Первичная авторизация
 Для создания токенов доступа необходимо авторизоваться отправив GET запрос на адрес `http://localhost:8181/sendsms`
 
 На указанный в настройках номер телефона должно придти СМС с кодом авторизации, который нужно отправить GET запросом по адресу `http://localhost:8181/auth?code=<your_code>`
@@ -50,6 +23,8 @@ pm2 start ./src/index.js
 ## Настройка интеграции в Home Assistant
 
 Для отправки уведомления необходимо создать новую автоматизацию.
+
+[![Open your Home Assistant instance and show your automations.](https://my.home-assistant.io/badges/automations.svg)](https://my.home-assistant.io/redirect/automations/)
 
 В качестве тригера использовать получение полезных данных Webhook
 
@@ -70,14 +45,12 @@ data:
         title: Открыть дверь
 ```
 
-Полезные данные в webhook:
+Полезная нагрузка данных в webhook:
 - address: Адрес звонящего домофона
 - apartment: Квартира звонящего домофона
 - entrance: Номер входа, откуда происходит звонок
 - openDoorUrl: Ссылка на открытие двери (Должна быть открыта методом POST)
 - snapshot: Ссылка на снапшот с камеры
 
-
 ## Roadmap
-- Docker образ дополнения HA
 - Автоматический проброс событий и сущностей через MQTT

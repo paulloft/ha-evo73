@@ -1,0 +1,13 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Start the example service
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+
+# Declare variables
+
+bashio::log.info "Starting service"
+
+## Run your program
+exec /usr/bin/app
