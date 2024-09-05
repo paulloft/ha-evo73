@@ -1,0 +1,5 @@
+configuration:
+  phone_number:
+    name: Phone number
+  webhook_url:
+    name: Webhook URL
