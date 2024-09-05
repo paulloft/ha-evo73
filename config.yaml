@@ -25,5 +25,5 @@ options:
   webhook_url: null
 
 schema:
-  phone_number: "str(11,11)"
+  phone_number: "match(7[0-9]{10})"
   webhook_url: "url?"
