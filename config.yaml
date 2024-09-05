@@ -1,7 +1,7 @@
-name: Домофон Evo73
+name: "Домофон Evo73"
 version: 1.0.0
 slug: doorphone
-description: Интеграция с домофоном EVO
+description: "Интеграция с домофоном EVO"
 url: https://github.com/paulloft/ha-evo73
 codenotary: info@paulloft.ru
 init: false
