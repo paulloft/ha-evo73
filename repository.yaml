@@ -1,4 +1,0 @@
-# https://developers.home-assistant.io/docs/add-ons/repository#repository-configuration
-name: EVO Addons
-url: "https://github.com/paulloft/ha-evo73"
-maintainer: PaulLoft <info@paulloft.ru>
