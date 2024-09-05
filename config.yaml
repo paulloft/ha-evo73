@@ -25,5 +25,5 @@ options:
   webhook_url: null
 
 schema:
-  phone_number: "int(11)"
+  phone_number: "int(11,11)"
   webhook_url: "url?"
