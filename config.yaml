@@ -6,13 +6,12 @@ url: https://github.com/paulloft/ha-evo73
 codenotary: info@paulloft.ru
 init: false
 
-ports:
-  80/tcp: 80
-
 arch:
+  - armhf
+  - armv7
   - aarch64
   - amd64
-  - armv7
+  - i386
 
 ingress: true
 ingress_port: 8099
