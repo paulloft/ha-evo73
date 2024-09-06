@@ -1,4 +1,4 @@
-name: "Домофон Evo73"
+name: "Домофон EVO"
 version: 1.0.0
 slug: doorphone
 description: "Интеграция с домофоном EVO"
@@ -26,4 +26,4 @@ options:
 
 schema:
   phone_number: "match(7[0-9]{10})"
-  webhook_url: "url?"
+  webhook_url: "str?"
