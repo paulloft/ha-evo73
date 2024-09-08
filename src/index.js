@@ -25,9 +25,13 @@ Webserver.add('get', '/auth', (URLSearchParams) => {
 });
 
 Webserver.add('get', '/devices', getDevices);
-Webserver.add('get', '/open', ({ deviceId, doorNum }) => openDoor(deviceId, doorNum));
-Webserver.add('get', '/stream', async ({ deviceId, high }, request, response) => {
-  const streamUrl = await getStreamUrl(deviceId, high === undefined ? true : high);
+Webserver.add('get', '/open', (params) => openDoor(
+  params.get('deviceId'),
+  params.get('doorNum'),
+));
+Webserver.add('get', '/stream', async (params, request, response) => {
+  const high = params.get('high');
+  const streamUrl = await getStreamUrl(params.get('deviceId'), high === undefined ? true : high);
   response.writeHead(302, { Location: streamUrl });
 });
 

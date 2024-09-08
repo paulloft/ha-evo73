@@ -54,7 +54,7 @@ async function handleRequest(request, response) {
 
   const handler = routes[request.method][url.pathname] || null;
   if (!handler) {
-    return Promise.reject(HttpException('Page not found', 404));
+    return Promise.reject(HttpException(`Route ${request.method} ${request.url} not found`, 404));
   }
 
   const payload = request.method === 'GET' ? url.searchParams : await getPayload(request);
