@@ -27,6 +27,10 @@ export default function SipClient({ username, password, serverHost, serverPort =
 
       case 'BYE':
         eventBus.emit(EVENT_BYE, SipRequest);
+        break;
+
+      default:
+        console.log(`Unknown method ${SipRequest.method}`, SipRequest);
     }
   });
 
