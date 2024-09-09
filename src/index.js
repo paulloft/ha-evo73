@@ -3,7 +3,7 @@ import { createToken, isTokenProvided, sendSms } from './Evo/SecureApi.js';
 import { getDevices, getDoorphone, getFirstDeviceId, getStreamUrl, openDoor } from './Evo/DoorPhone.js';
 import Webserver, { getServerUrl } from './Webserver.js';
 import HttpException from './HttpException.js';
-import { getSnapshotImageResponse, sendWebhook } from './Actions.js';
+import { getSnapshotImageResponse, renderWebPage, sendWebhook } from './Actions.js';
 import SipAgent from './SipAgent.js';
 
 env.env('local').env();
@@ -13,7 +13,7 @@ if (!process.env.APP_PHONE_NUMBER) {
   console.info('[INFO] Создайте файл .env.local с содержимым APP_PHONE_NUMBER=79000000000');
   process.exit(1);
 }
-
+Webserver.add('get', '/', () => renderWebPage());
 Webserver.add('get', '/sendsms', () => sendSms());
 Webserver.add('get', '/auth', (URLSearchParams) => {
   const code = URLSearchParams.get('code');

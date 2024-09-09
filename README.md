@@ -30,8 +30,8 @@
 
 ```yaml
 rest_command:
-  open_door:
-    url: 'http://961868a2_doorphone/open'
+  doorphone_open:
+    url: 'http://961868a2-doorphone/open'
     method: GET
 ```
 
@@ -55,7 +55,7 @@ data:
   data:
     image: "{{ trigger.json.snapshot }}"
     actions:
-      - action: rest_command.open_door
+      - action: rest_command.doorphone_open
         title: Открыть дверь
 ```
 
