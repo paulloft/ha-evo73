@@ -14,7 +14,7 @@ arch:
   - i386
 
 ingress: true
-ingress_port: 8099
+ingress_port: 80
 
 map:
   - addon_config:rw

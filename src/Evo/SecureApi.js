@@ -106,7 +106,6 @@ function getAuthOptions(namespace) {
 }
 
 async function tryRefreshTokens(response) {
-  console.log(response);
   if (response.status === 401) {
     console.log('Need to refresh tokens');
     return refreshMainToken()

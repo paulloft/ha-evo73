@@ -25,7 +25,3 @@ export function sendWebhook(doorphone) {
     body: JSON.stringify(data),
   }).then(() => (data));
 }
-
-export function renderWebPage() {
-
-}
