@@ -25,9 +25,9 @@ function getFilePath(path) {
   return `${getPathApp()}/public${filePath}`;
 }
 
-export function fileGetContent(filepath) {
+export function fileGetContent(filepath, isBinary) {
   return new Promise((resolve, reject) => {
-    fs.readFile(filepath, { encoding: 'utf8' }, (error, content) => {
+    fs.readFile(filepath, isBinary ? 'binary' : 'utf8', (error, content) => {
       if (error) {
         reject(error);
       } else {
@@ -40,13 +40,11 @@ export function fileGetContent(filepath) {
 export async function renderContent(filepath, response) {
   const contentType = getFileMimeType(filepath);
   const [type] = contentType.split('/');
-  // response.setHeader('Content-Type', contentType);
-  console.log(filepath);
+  response.setHeader('Content-Type', contentType);
+  const isBinary = type !== 'text';
 
-  return fileGetContent(filepath).then((content) => {
-    console.log(type);
-    // response.setHeader('Content-Length', content.length);
-    response.write(content);
+  return fileGetContent(filepath, isBinary).then((content) => {
+    response.write(content, isBinary ? 'binary' : null);
   });
 }
 

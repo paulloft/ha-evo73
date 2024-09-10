@@ -81,12 +81,14 @@ export function generateString() {
 export function getFileMimeType(filepath) {
   const parts = filepath.split('.');
   const extension = parts.pop();
+  const encoding = 'charset=utf-8';
   switch (extension) {
     case 'html':
+      return `text/${extension}; ${encoding}`;
     case 'css':
-      return `text/${extension}; charset=utf-8`;
+      return `text/${extension}`;
     case 'js':
-      return 'application/javascript';
+      return `application/javascript; ${encoding}`;
     case 'png':
     case 'gif':
       return `image/${extension}`;
@@ -97,6 +99,6 @@ export function getFileMimeType(filepath) {
     case 'svg':
       return 'image/svg+xml';
     default:
-      return 'text/plain; charset=utf-8';
+      return `text/plain; ${encoding}`;
   }
 }
