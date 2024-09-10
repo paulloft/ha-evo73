@@ -1,7 +1,7 @@
-import HttpException from '../HttpException.js';
-import Api, { fetchUrl } from '../Api.js';
+import HttpException from '../Utils/HttpException.js';
+import Api, { fetchUrl } from '../Utils/Api.js';
 import Storage from '../Storage.js';
-import { getUrlString } from '../Helpers.js';
+import { getUrlString } from '../Utils/Helpers.js';
 
 const NAMESPACE_DEFAULT = 'main';
 const NAMESPACE_DOORPHONE = 'doorphone';

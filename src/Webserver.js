@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { parse } from 'node:querystring';
-import HttpException from './HttpException.js';
-import { getFileMimeType, getPathApp } from './Helpers.js';
+import HttpException from './Utils/HttpException.js';
+import { getFileMimeType, getPathApp } from './Utils/Helpers.js';
 import fs from 'node:fs';
 
 const routes = { GET: {}, POST: {} };

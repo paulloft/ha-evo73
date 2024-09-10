@@ -1,9 +1,9 @@
 import env from 'custom-env';
 import { createToken, isTokenProvided, sendSms } from './Evo/SecureApi.js';
 import { getDevices, getDoorphone, getFirstDeviceId, getStreamUrl, openDoor } from './Evo/DoorPhone.js';
-import Webserver, { getServerUrl, renderContent } from './Webserver.js';
-import HttpException from './HttpException.js';
-import { getSnapshotImageResponse, sendWebhook } from './Actions.js';
+import Webserver, { getServerUrl } from './Webserver.js';
+import HttpException from './Utils/HttpException.js';
+import { getInfo, getSnapshotImageResponse, sendWebhook } from './Actions.js';
 import SipAgent from './SipAgent.js';
 
 env.env('local').env();
@@ -14,6 +14,7 @@ if (!process.env.APP_PHONE_NUMBER) {
   process.exit(1);
 }
 
+Webserver.add('get', '/info', () => getInfo());
 Webserver.add('get', '/sendsms', () => sendSms());
 Webserver.add('get', '/auth', (URLSearchParams) => {
   const code = URLSearchParams.get('code');
@@ -21,7 +22,10 @@ Webserver.add('get', '/auth', (URLSearchParams) => {
     throw HttpException('Код подтверждения не был получен');
   }
 
-  return createToken(code);
+  return createToken(code).then((response) => {
+    SipAgent.start();
+    return response;
+  });
 });
 
 Webserver.add('get', '/devices', getDevices);
@@ -57,14 +61,14 @@ Webserver.start(() => {
   console.info('------------------------------------------------------------------------------------------');
 });
 
+SipAgent.start();
+
 if (!isTokenProvided()) {
   console.warn('------------------------------------------------------------------------------------------');
   console.warn('  Токен авторизации отсутствует!');
   console.warn(`  Запросите СМС с кодом авторизации перейдя по ссылке ${serverUrl}/sendsms`);
   console.warn(`  Затем введите полученный код ${serverUrl}/auth?code=<your_code>`);
   console.warn('------------------------------------------------------------------------------------------');
-} else if (process.env.APP_WEBHOOK_URL) {
-  SipAgent.start();
 }
 
 

@@ -2,6 +2,8 @@ import { getDevices } from './Evo/DoorPhone.js';
 import SipClient, { EVENT_INVITE } from './Sip/SipClient.js';
 import { sendWebhook } from './Actions.js';
 
+let started = false;
+
 /**
  * @param {{
  *  id: int,
@@ -38,6 +40,11 @@ function connectSocket(doorphone) {
 }
 
 function start() {
+  if (started || !process.env.APP_WEBHOOK_URL) {
+    return;
+  }
+
+  started = true;
   /**
    * @var {{doorphones: []}} response
    */

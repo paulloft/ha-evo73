@@ -9,7 +9,7 @@ const config = {
   },
   resolve: {
     alias: {
-      components: path.resolve(__dirname, 'src'),
+      app: path.resolve(__dirname, 'src'),
     },
     extensions: ['.js', '.jsx'],
   },

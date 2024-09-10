@@ -1,6 +1,6 @@
 import SecureApi, { normalizeUrl } from './SecureApi.js';
-import { fetchUrl } from '../Api.js';
-import { getUrlString } from '../Helpers.js';
+import { fetchUrl } from '../Utils/Api.js';
+import { getUrlString } from '../Utils/Helpers.js';
 
 let devices;
 
