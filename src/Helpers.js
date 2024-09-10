@@ -77,3 +77,26 @@ export function filterObject(object) {
 export function generateString() {
   return (Math.random() + 1).toString(36).substring(7);
 }
+
+export function getFileMimeType(filepath) {
+  const parts = filepath.split('.');
+  const extension = parts.pop();
+  switch (extension) {
+    case 'html':
+    case 'css':
+      return `text/${extension}; charset=utf-8`;
+    case 'js':
+      return 'application/javascript';
+    case 'png':
+    case 'gif':
+      return `image/${extension}`;
+    case 'jpg':
+      return 'image/jpeg';
+    case 'ico':
+      return 'image/x-icon';
+    case 'svg':
+      return 'image/svg+xml';
+    default:
+      return 'text/plain; charset=utf-8';
+  }
+}

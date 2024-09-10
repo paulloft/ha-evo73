@@ -1,6 +1,8 @@
 import { createServer } from 'node:http';
 import { parse } from 'node:querystring';
 import HttpException from './HttpException.js';
+import { getFileMimeType, getPathApp } from './Helpers.js';
+import fs from 'node:fs';
 
 const routes = { GET: {}, POST: {} };
 
@@ -15,6 +17,37 @@ function handleError(error, response) {
   console.error(error);
   response.writeHead(statusCode, { 'Content-Type': 'application/json' });
   response.write(JSON.stringify({ code: statusCode, error: error.message, status: false }));
+}
+
+function getFilePath(path) {
+  const filePath = path === '/' ? '/index.html' : path.replace('../', '');
+
+  return `${getPathApp()}/public${filePath}`;
+}
+
+export function fileGetContent(filepath) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filepath, { encoding: 'utf8' }, (error, content) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(content);
+      }
+    });
+  });
+}
+
+export async function renderContent(filepath, response) {
+  const contentType = getFileMimeType(filepath);
+  const [type] = contentType.split('/');
+  // response.setHeader('Content-Type', contentType);
+  console.log(filepath);
+
+  return fileGetContent(filepath).then((content) => {
+    console.log(type);
+    // response.setHeader('Content-Length', content.length);
+    response.write(content);
+  });
 }
 
 function parseResult(buffer, request) {
@@ -53,13 +86,19 @@ async function handleRequest(request, response) {
   const url = new URL(request.url, baseURL);
 
   const handler = routes[request.method][url.pathname] || null;
-  if (!handler) {
-    return Promise.reject(HttpException(`Route ${request.method} ${request.url} not found`, 404));
+  if (handler) {
+    const payload = request.method === 'GET' ? url.searchParams : await getPayload(request);
+    const result = handler(payload, request, response);
+    return result instanceof Promise ? result : Promise.resolve(result);
   }
 
-  const payload = request.method === 'GET' ? url.searchParams : await getPayload(request);
-  const result = handler(payload, request, response);
-  return result instanceof Promise ? result : Promise.resolve(result);
+  const filePath = getFilePath(url.pathname);
+
+  if (fs.existsSync(filePath)) {
+    return renderContent(filePath, response);
+  }
+
+  return Promise.reject(HttpException(`Route ${request.method} ${request.url} not found`, 404));
 }
 
 export function add(method, path, callback) {

@@ -6,4 +6,5 @@ cd /app
 APP_PHONE_NUMBER=$(bashio::config 'phone_number') \
   APP_WEBHOOK_URL=$(bashio::config 'webhook_url') \
   APP_STORAGE_DIR=/config \
+  APP_WEBSERVER_PORT=80 \
   node /app/src/index.js
