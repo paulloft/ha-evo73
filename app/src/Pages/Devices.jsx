@@ -30,9 +30,9 @@ export default function Devices() {
           <button type="button" className="btn-close" onClick={() => setError('')} />
         </div>
       )}
-      <div className="row">
+      <div className="row justify-content-center">
         {devices.doorphones.map((doorphone) => (
-          <div className="col" key={doorphone.id}>
+          <div className="col-sm-12 col-md-6 col-lg-6 col-xl-4" key={doorphone.id}>
             <div className="card">
               <img src={doorphone.snapshot} className="card-img-top" alt="" />
               <div className="card-body">
