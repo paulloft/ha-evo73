@@ -41,8 +41,8 @@ Webserver.add('get', '/stream', async (params, request, response) => {
 
 Webserver.add('get', '/snapshot', getSnapshotImageResponse);
 Webserver.add('get', '/test-webhook', async (params) => {
-  const doorphoneID = params.get('deviceId') || await getFirstDeviceId();
-  const doorphone = await getDoorphone(doorphoneID);
+  const deviceId = params.get('deviceId') || await getFirstDeviceId();
+  const doorphone = await getDoorphone(parseInt(deviceId, 10));
 
   return sendWebhook(doorphone).then((response) => ({ status: true, response }));
 });

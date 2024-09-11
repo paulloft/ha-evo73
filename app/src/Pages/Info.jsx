@@ -1,13 +1,8 @@
 import { useLoaderData } from 'react-router-dom';
 import React from 'react';
-import Unauthorized from './Unauthorized';
+import Authorization from './Authorization';
 
 export default function Info() {
-  const { authorized } = useLoaderData();
-
-  if (!authorized) {
-    return (<Unauthorized />);
-  }
 
   return (
     <div>hi</div>
