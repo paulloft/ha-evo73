@@ -5,7 +5,7 @@ const parseResponse = async (response) => {
   return response.status === 200 ? json : Promise.reject(json.error);
 };
 
-export default function Unauthorized() {
+export default function Authorization() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [requested, setRequested] = useState(false);

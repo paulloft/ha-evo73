@@ -21,6 +21,11 @@ export function sendWebhook(doorphone) {
     openDoorUrl: doorphone.door_open_url,
     snapshot: getSnapshotUrl(doorphone.id, true),
   };
+
+  if (!process.env.APP_WEBHOOK_URL) {
+    throw new Error('Webhook отключен');
+  }
+
   return fetchUrl(process.env.APP_WEBHOOK_URL, {
     method: 'POST',
     body: JSON.stringify(data),
