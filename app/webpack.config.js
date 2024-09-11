@@ -1,11 +1,15 @@
 const path = require('path');
-const isProduction = process.env.NODE_ENV == 'production';
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 const config = {
+  context: __dirname,
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, '../public'),
     filename: 'bundle.js',
+    clean: true,
   },
   resolve: {
     alias: {
@@ -16,15 +20,24 @@ const config = {
   module: {
     rules: [
       {
+        parser: { amd: false },
+      },
+      {
         test: /\.(js|jsx)$/i,
         loader: 'babel-loader',
+        exclude: /(node_modules|bower_components)/,
       },
       {
         test: /\.(eot|svg|ttf|woff|woff2|png|jpg|gif)$/i,
-        type: 'asset',
+        type: 'file-loader',
       },
     ],
   },
+  plugins: [new HtmlWebpackPlugin({
+    template: 'public/index.html',
+    favicon: 'public/favicon.png',
+    alwaysWriteToDisk: true,
+  })],
 };
 
 module.exports = () => {

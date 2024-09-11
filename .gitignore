@@ -7,7 +7,7 @@
 node_modules/
 ipa/unpacked/
 var/
-public/bundle.js*
+public/
 
 # Compiled Java class files
 *.class

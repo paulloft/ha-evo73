@@ -47,11 +47,9 @@ Webserver.add('get', '/test-webhook', async (params) => {
   return sendWebhook(doorphone).then((response) => ({ status: true, response }));
 });
 
-const serverUrl = getServerUrl();
-
 Webserver.start(() => {
   console.info('------------------------------------------------------------------------------------------');
-  console.info(`  EVO 73 Управление домофонами. Web Сервер запущен по адресу: ${serverUrl}`);
+  console.info(`  EVO 73 Управление домофоном. Web Сервер запущен по адресу: ${getServerUrl()}`);
   console.info('------------------------------------------------------------------------------------------');
   console.info('  Получить список устройств           /devices');
   console.info('  Получить ссылку на стрим с камеры   /stream?deviceId=<int|null>&high=<bool|true>');
@@ -59,16 +57,11 @@ Webserver.start(() => {
   console.info('  Открыть дверь                       /open?deviceId=<int|null>&doorNum=<int|null>');
   console.info('  Имитация события звонка в дверь     /test-webhook?deviceId=<int|null>');
   console.info('------------------------------------------------------------------------------------------');
+  if (!isTokenProvided()) {
+    console.warn('  [ВНИМАНИЕ] Токен авторизации отсутствует!');
+    console.warn('  Откройте Web-интерфейс и пройдите процедуру первичной авторизации.');
+    console.info('------------------------------------------------------------------------------------------');
+  }
 });
 
 SipAgent.start();
-
-if (!isTokenProvided()) {
-  console.warn('------------------------------------------------------------------------------------------');
-  console.warn('  Токен авторизации отсутствует!');
-  console.warn(`  Запросите СМС с кодом авторизации перейдя по ссылке ${serverUrl}/sendsms`);
-  console.warn(`  Затем введите полученный код ${serverUrl}/auth?code=<your_code>`);
-  console.warn('------------------------------------------------------------------------------------------');
-}
-
-
