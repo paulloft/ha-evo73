@@ -47,9 +47,11 @@ export default function SipClient({ username, password, serverHost, serverPort =
         return socket
           .fetch(createAuthRequest(config, registerRequest.method, registerRequest.requestUri, headers))
           .then((response) => {
-            if (response !== 200) {
+            if (response.statusCode !== 200) {
               throw new Error('Failed to authenticate on SIP server', { cause: response });
             }
+
+            return response;
           });
       }
 

@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { readFileSync, writeFile } from 'node:fs';
-import { getPathApp } from './Helpers.js';
+import { getPathApp } from './Utils/Helpers.js';
 
 const storage = {};
 
