@@ -1,5 +1,5 @@
 name: "Домофон EVO"
-version: 1.0.2
+version: 1.0.3
 slug: doorphone
 description: "Интеграция с домофоном EVO"
 url: https://github.com/paulloft/ha-evo73
