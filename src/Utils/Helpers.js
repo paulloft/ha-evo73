@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 export function getPathApp() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  return resolve(__dirname, '../');
+  return resolve(__dirname, '../../');
 }
 
 export function isEmptyValue(value) {
@@ -76,4 +76,29 @@ export function filterObject(object) {
 
 export function generateString() {
   return (Math.random() + 1).toString(36).substring(7);
+}
+
+export function getFileMimeType(filepath) {
+  const parts = filepath.split('.');
+  const extension = parts.pop();
+  const encoding = 'charset=utf-8';
+  switch (extension) {
+    case 'html':
+      return `text/${extension}; ${encoding}`;
+    case 'css':
+      return `text/${extension}`;
+    case 'js':
+      return `application/javascript; ${encoding}`;
+    case 'png':
+    case 'gif':
+      return `image/${extension}`;
+    case 'jpg':
+      return 'image/jpeg';
+    case 'ico':
+      return 'image/x-icon';
+    case 'svg':
+      return 'image/svg+xml';
+    default:
+      return `text/plain; ${encoding}`;
+  }
 }
