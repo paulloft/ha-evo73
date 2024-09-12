@@ -3,9 +3,9 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/base:16.2.1
 
 FROM node:latest AS nodejs
 
-WORKDIR /usr/app
 COPY --link ./app/ /usr/app/
-RUN npm install --force --silent && npm run build:prod
+WORKDIR /usr/app
+RUN npm i && npm run build:prod
 
 FROM ${BUILD_FROM}
 
