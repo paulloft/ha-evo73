@@ -5,6 +5,8 @@ import Authorization from './Pages/Authorization';
 import { sendRequest } from './Utils';
 import Devices from './Pages/Devices';
 import Layout from './Layout';
+import Spinner from 'app/Components/Spinner';
+import Wrapper from 'app/Components/Wrapper';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -21,19 +23,19 @@ const router = createHashRouter([
             index: true,
             Component: Devices,
             loader: ({ request }) => sendRequest('/devices', request),
-          }
+          },
         ],
       },
       {
         path: '/auth',
         Component: Authorization,
-      }
+      },
     ],
   },
 ]);
 
 root.render((
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <RouterProvider router={router} fallbackElement={(<Wrapper><Spinner size="lg"/></Wrapper>)}/>
   </React.StrictMode>
 ));

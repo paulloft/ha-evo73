@@ -1,15 +1,22 @@
-.PHONY: run build watch
+.PHONY: build run server-build server-start app-build app-watch
 .DEFAULT_GOAL= help
 include .env
 include .env.local
 
-build:
-	npm i && cd ./app && npm i --force --silent && npm run build:prod
+server-build:
+	npm i --force --silent
 
-watch:
+server-start:
+	npm run start
+
+server-watch:
+	npm run watch
+
+app-build:
+	cd ./app && npm i --force --silent && npm run build:prod
+
+app-watch:
 	cd ./app && npm i && npm run watch
 
-start:
-	node ./src/index.js
-
-run: build start
+build: server-build app-build
+run: build server-start
