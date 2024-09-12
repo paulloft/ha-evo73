@@ -45,7 +45,7 @@ export default class SipSocket {
     if (message.startsWith('SIP')) { // is response
       const response = SipResponse.parse(message);
 
-      if (response.statusCode > 200) {
+      if (response.statusCode >= 200) {
         RequestBucket.resolveResponse(response);
       }
     } else { // is new request

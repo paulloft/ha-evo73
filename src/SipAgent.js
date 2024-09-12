@@ -1,7 +1,7 @@
 import { getDevices } from './Evo/DoorPhone.js';
 import SipClient, { EVENT_INVITE } from './Sip/SipClient.js';
-import { sendWebhook } from './Actions.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
+import { sendWebhook } from './Actions.js';
 
 let started = false;
 
