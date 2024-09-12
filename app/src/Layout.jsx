@@ -1,12 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import React from 'react';
+import Wrapper from 'app/Components/Wrapper';
 
 export default function Layout() {
-  return (
-    <div className="container d-flex vh-100 w-100 align-items-center">
-      <div className="w-100">
-        <Outlet />
-      </div>
-    </div>
-  );
+  return (<Wrapper><Outlet/></Wrapper>);
 }
