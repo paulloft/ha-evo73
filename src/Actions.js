@@ -1,6 +1,6 @@
 import { getSnapshot, getSnapshotUrl } from './Evo/DoorPhone.js';
 import { fetchUrl } from './Utils/Api.js';
-import { isTokenProvided } from "./Evo/SecureApi.js";
+import { isTokenProvided } from './Evo/SecureApi.js';
 
 export function getSnapshotImageResponse(params, request, webResponse) {
   return getSnapshot(params.get('deviceId'), !!params.get('compress'))
@@ -14,6 +14,12 @@ export function getSnapshotImageResponse(params, request, webResponse) {
 }
 
 export function sendWebhook(doorphone) {
+  const webhookUrl = process.env.APP_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    throw new Error('Webhook отключен');
+  }
+
   const data = {
     address: doorphone.address,
     apartment: doorphone.apartment,
@@ -22,11 +28,7 @@ export function sendWebhook(doorphone) {
     snapshot: getSnapshotUrl(doorphone.id, true),
   };
 
-  if (!process.env.APP_WEBHOOK_URL) {
-    throw new Error('Webhook отключен');
-  }
-
-  return fetchUrl(process.env.APP_WEBHOOK_URL, {
+  return fetchUrl(webhookUrl, {
     method: 'POST',
     body: JSON.stringify(data),
   }).then(() => (data));
