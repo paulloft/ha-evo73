@@ -1,6 +1,7 @@
 import { getSnapshot, getSnapshotUrl } from './Evo/DoorPhone.js';
 import { fetchUrl } from './Utils/Api.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
+import HttpException from './Utils/HttpException.js';
 
 export function getSnapshotImageResponse(params, request, webResponse) {
   return getSnapshot(params.get('deviceId'), !!params.get('compress'))
@@ -10,6 +11,8 @@ export function getSnapshotImageResponse(params, request, webResponse) {
       return blob.arrayBuffer();
     }).then((arrayBuffer) => {
       webResponse.write(Buffer.from(arrayBuffer), 'binary');
+    }).catch(async (response) => {
+      throw HttpException(response.statusText, response.status);
     });
 }
 
