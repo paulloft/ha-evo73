@@ -15,6 +15,7 @@ arch:
 
 ingress: true
 ingress_port: 80
+panel_icon: mdi:doorbell-video
 
 map:
   - addon_config:rw

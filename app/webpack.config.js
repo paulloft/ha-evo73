@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -34,18 +35,24 @@ const config = {
       {
         test: /\.s[ac]ss$/i,
         use: [
-          'style-loader',
+          MiniCssExtractPlugin.loader,
           'css-loader',
           'sass-loader',
         ],
       },
     ],
   },
-  plugins: [new HtmlWebpackPlugin({
-    template: 'public/index.html',
-    favicon: 'public/favicon.png',
-    alwaysWriteToDisk: true,
-  })],
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: 'public/index.html',
+      favicon: 'public/favicon.png',
+      alwaysWriteToDisk: true,
+    }),
+    new MiniCssExtractPlugin({
+      filename: 'styles.css',
+      chunkFilename: '[name].css',
+    }),
+  ],
 };
 
 module.exports = () => {
