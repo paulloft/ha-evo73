@@ -23,6 +23,10 @@ export default function Devices() {
       .finally(() => setLoaded(false));
   };
 
+  const cardClass = devices.doorphones.length > 1
+    ? 'col-sm-12 col-md-12 col-lg-6 col-xl-4'
+    : 'col col-lg-8 col-xl-6';
+
   return (
     <>
       {error && (
@@ -33,7 +37,7 @@ export default function Devices() {
       )}
       <div className="row justify-content-center">
         {devices.doorphones.map((doorphone) => (
-          <div className="col-sm-12 col-md-6 col-lg-6 col-xl-4" key={doorphone.id}>
+          <div className={cardClass} key={doorphone.id}>
             <div className="card">
               <VideoPlayer poster={doorphone.snapshot} src={getUrl('/stream')} className="rounded" />
               <div className="card-body">

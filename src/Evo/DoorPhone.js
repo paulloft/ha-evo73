@@ -5,7 +5,7 @@ import { getUrlString } from '../Utils/Helpers.js';
 let devices;
 
 export function getDevices(cached = false) {
-  if (devices && !cached) {
+  if (devices && cached) {
     return Promise.resolve(devices);
   }
 

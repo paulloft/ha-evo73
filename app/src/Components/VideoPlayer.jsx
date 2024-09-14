@@ -20,6 +20,8 @@ export default function VideoPlayer({ src, className = '', poster = null }) {
   return (
     <video
       ref={videoRef}
+      autoPlay
+      muted
       controls
       src={src}
       poster={poster}

@@ -36,7 +36,6 @@ async function refreshMainToken() {
     if (response.status === 200) {
       const [, token] = response.headers.get('Authorization').split(' ');
       saveToken(token, NAMESPACE_DEFAULT);
-      console.log('new token', token);
       return { token };
     }
 
@@ -47,7 +46,9 @@ async function refreshMainToken() {
 function refreshDoorPhoneToken() {
   // Берем токен из NAMESPACE_DEFAULT а сохраняем уже в NAMESPACE_DOORPHONE
   return Api.post(`${BASE_URI}/authIntercom`, {}, getAuthOptions(NAMESPACE_DEFAULT))
-    .then(({ token }) => saveToken(token, NAMESPACE_DOORPHONE));
+    .then(({ token }) => {
+      saveToken(token, NAMESPACE_DOORPHONE);
+    });
 }
 
 function getToken(namespace) {
@@ -56,6 +57,7 @@ function getToken(namespace) {
 
 function saveToken(token, namespace) {
   Storage.save(namespaces[namespace].tokenName, token);
+  console.log(`[${namespace}] Token update was successful`);
 }
 
 export function sendSms() {
