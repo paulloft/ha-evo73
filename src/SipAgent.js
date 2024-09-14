@@ -49,7 +49,7 @@ function start() {
   /**
    * @var {{doorphones: []}} response
    */
-  getDevices().then((response) => {
+  getDevices(true).then((response) => {
     response.doorphones.forEach((doorphone) => connectSocket(doorphone));
   }).catch((error) => {
     console.error(error);

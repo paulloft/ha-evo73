@@ -4,8 +4,8 @@ import { getUrlString } from '../Utils/Helpers.js';
 
 let devices;
 
-export function getDevices() {
-  if (devices) {
+export function getDevices(cached = false) {
+  if (devices && !cached) {
     return Promise.resolve(devices);
   }
 
@@ -22,7 +22,7 @@ export async function getDoorphone(id) {
 }
 
 export async function getFirstDeviceId() {
-  const devices = await getDevices();
+  const devices = await getDevices(true);
   const id = devices?.doorphones[0]?.id;
 
   if (!id) {
@@ -37,7 +37,11 @@ export async function openDoor(deviceId = null, doorNum = null) {
     deviceId = await getFirstDeviceId();
   }
 
-  return SecureApi.postJson(`doorphone://doorphone/${deviceId}/open-door/${doorNum || 1}`);
+  return SecureApi.postJson(`doorphone://doorphone/${deviceId}/open-door/${doorNum || 1}`)
+    .then((response) => {
+      console.info('Дверь открыта');
+      return response;
+    });
 }
 
 export async function getStreamUrl(deviceId = null, high = true) {
