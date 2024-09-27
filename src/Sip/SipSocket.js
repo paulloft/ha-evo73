@@ -12,6 +12,7 @@ export const EVENT_REQUEST = 'request';
 export const EVENT_MESSAGE = 'message';
 export const EVENT_ERROR = 'error';
 export const EVENT_CONNECT_ERROR = 'connectionError';
+export const EVENT_CLOSE_CONNECTION = 'close';
 
 export default class SipSocket {
   constructor(host, port = null, listenIp = null, listenPort = null) {
@@ -20,10 +21,8 @@ export default class SipSocket {
     this.listenIp = listenIp || getLocalIpAddress();
     this.listenPort = listenPort || CLIENT_PORT;
 
-    this.socket = createSocket('udp4');
+    this.socket = null;
     this.event = new EventEmitter();
-
-    this.isBinded = false;
   }
 
   confirmRequest(request) {
@@ -59,21 +58,26 @@ export default class SipSocket {
   }
 
   bind() {
-    if (this.isBinded) {
+    if (this.socket) {
       return;
     }
 
-    this.isBinded = true;
+    this.socket = createSocket('udp4');
     this.socket.bind(this.listenPort, this.listenIp);
 
     this.socket.on('error', (error) => {
       console.error('UDP socket closed unexpectedly', error);
-      this.socket.close();
       this.event.emit(EVENT_CONNECT_ERROR, error);
+      this.socket.close();
     });
 
     this.socket.on('connect', () => {
       this.event.emit(EVENT_CONNECTED);
+    });
+
+    this.socket.on('close', () => {
+      this.event.emit(EVENT_CLOSE_CONNECTION);
+      this.socket = null;
     });
 
     this.socket.on('message', (buffer) => {
@@ -96,6 +100,12 @@ export default class SipSocket {
       });
     });
   };
+
+  close() {
+    if (this.socket) {
+      this.socket.close();
+    }
+  }
 
   fetch(SipRequest) {
     return new Promise((resolve, reject) => {
