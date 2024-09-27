@@ -6,6 +6,8 @@ export const USER_AGENT = 'Node.js';
 export const SERVER_PORT = 5060;
 export const CLIENT_PORT = 53478;
 
+export const RECONNECT_TIMEOUT = 5000;
+
 export const EXPIRES = 300;
 
 export const RESPONSES = {

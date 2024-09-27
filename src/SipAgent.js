@@ -1,8 +1,8 @@
 import { getDevices } from './Evo/DoorPhone.js';
-import SipClient, { EVENT_INVITE } from './Sip/SipClient.js';
+import SipClient, { EVENT_CLOSE, EVENT_INVITE } from './Sip/SipClient.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
 import { sendWebhook } from './Actions.js';
-import { EVENT_MESSAGE, EVENT_REQUEST } from './Sip/SipSocket.js';
+import { RECONNECT_TIMEOUT } from './Sip/Constants.js';
 
 let started = false;
 
@@ -32,14 +32,22 @@ function connectSocket(doorphone) {
     serverPort,
   });
 
-  sipClient.register().then(() => {
-    console.log('SIP Agent running');
-  }).catch((error) => {
-    console.error('SIP Agent error: ', error);
-  });
+  const register = () => {
+    sipClient.register()
+      .then(() => console.log('SIP Agent running'))
+      .catch((error) => console.error('SIP Agent error: ', error));
+  };
+
+  // TODO uncomment to debug
+  // sipClient.socket.on('message', (message) => console.log(message));
 
   sipClient.on(EVENT_INVITE, () => sendWebhook(doorphone));
-  sipClient.socket.on(EVENT_REQUEST, (message) => console.log(message));
+  sipClient.on(EVENT_CLOSE, () => {
+    console.log('SIP socket closed. Reconnecting...');
+    setTimeout(() => register(), RECONNECT_TIMEOUT);
+  });
+
+  register();
 }
 
 function start() {
@@ -57,9 +65,7 @@ function start() {
    */
   getDevices().then((response) => {
     response.doorphones.forEach((doorphone) => connectSocket(doorphone));
-  }).catch((error) => {
-    console.error(error);
-  });
+  }).catch((error) => console.error(error));
 }
 
 export default {
