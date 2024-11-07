@@ -1,7 +1,8 @@
 import HttpException from '../Utils/HttpException.js';
 import Api, { fetchUrl } from '../Utils/Api.js';
-import Storage from '../Storage.js';
 import { getUrlString } from '../Utils/Helpers.js';
+import Storage from '../Storage.js';
+import Logger from '../Logger.js';
 
 const NAMESPACE_DEFAULT = 'main';
 const NAMESPACE_DOORPHONE = 'doorphone';
@@ -40,6 +41,13 @@ async function refreshMainToken() {
     }
 
     return Promise.reject(response);
+  }).catch((response) => {
+    if (response.status === 401) {
+      Logger.error('Refresh main token failed. Token expired or invalid');
+      Storage.save(NAMESPACE_DEFAULT, null);
+    }
+
+    return response;
   });
 }
 
@@ -48,6 +56,14 @@ function refreshDoorPhoneToken() {
   return Api.post(`${BASE_URI}/authIntercom`, {}, getAuthOptions(NAMESPACE_DEFAULT))
     .then(({ token }) => {
       saveToken(token, NAMESPACE_DOORPHONE);
+    })
+    .catch((response) => {
+      if (response.status === 401) {
+        Logger.error('Refresh doorphone token failed. Token expired or invalid');
+        Storage.save(NAMESPACE_DOORPHONE, null);
+      }
+
+      return Promise.reject(response);
     });
 }
 
@@ -57,7 +73,7 @@ function getToken(namespace) {
 
 function saveToken(token, namespace) {
   Storage.save(namespaces[namespace].tokenName, token);
-  console.log(`[${namespace}] Token update was successful`);
+  Logger.log(`[${namespace}] Token update was successful`);
 }
 
 export function sendSms() {
@@ -72,7 +88,8 @@ export function sendSms() {
         throw HttpException('Превышено количество попыток отправки. Попробуйте позже.', response.status);
 
       default:
-        console.error('[ERROR] Send SMS', response);
+        Logger.error('Failed to send SMS');
+        Logger.debug('Send SMS response:', response);
         throw HttpException('Не удалось отправить смс', response.status);
     }
   });
@@ -85,12 +102,13 @@ export function createToken(code) {
   }).then((response) => {
     if (response.access_token) {
       saveToken(response.access_token, NAMESPACE_DEFAULT);
-      console.info('[INFO] Токен авторизации успешно создан');
+      Logger.log('Токен авторизации успешно создан');
     }
     return response;
   }).catch(async (response) => {
     const json = await response.json();
-    console.error('[ERROR] Failed to create token', json);
+    Logger.error('Failed to create token', json);
+    Logger.debug('Response json:', json);
     if (response.status === 401) {
       throw HttpException('Неверный код авторизации', response.status);
     }
@@ -109,17 +127,18 @@ function getAuthOptions(namespace) {
 
 async function tryRefreshTokens(response) {
   if (response.status === 401) {
-    console.log('Need to refresh tokens');
+    Logger.log('Need to refresh tokens');
     return refreshMainToken()
       .then(refreshDoorPhoneToken)
       .catch((response) => {
-        console.error('[ERROR] Refresh token', response);
+        Logger.error('Failed to refresh tokens');
+        Logger.debug('Refresh token response', response);
         throw HttpException(`Не удалось обновить токен. Статус ответа: ${response.status}`, response.status);
       });
   }
 
   const json = await response.json();
-  console.log('[ERROR] response', json);
+  Logger.debug('JSON response', json);
 
   throw HttpException(response.statusText, response.status);
 }

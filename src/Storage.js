@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { readFileSync, writeFile } from 'node:fs';
 import { getPathApp } from './Utils/Helpers.js';
+import Logger from './Logger.js';
 
 const storage = {};
 
@@ -27,7 +28,7 @@ function save(key, content) {
   storage[key] = content;
   writeFile(getFilename(key), content, (error) => {
     if (error) {
-      console.error(`Unable save to storage`, error);
+      Logger.error(`Unable save to storage`, error);
     }
   });
 }

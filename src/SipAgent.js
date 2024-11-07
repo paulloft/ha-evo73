@@ -3,6 +3,7 @@ import SipClient, { EVENT_CLOSE, EVENT_INVITE } from './Sip/SipClient.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
 import { sendWebhook } from './Actions.js';
 import { RECONNECT_TIMEOUT } from './Sip/Constants.js';
+import Logger from './Logger.js';
 
 let started = false;
 
@@ -34,16 +35,15 @@ function connectSocket(doorphone) {
 
   const register = () => {
     sipClient.register()
-      .then(() => console.log('SIP Agent running'))
-      .catch((error) => console.error('SIP Agent error: ', error));
+      .then(() => Logger.log('SIP Agent running'))
+      .catch((error) => Logger.error('SIP Agent error: ', error));
   };
 
-  // TODO uncomment to debug
-  // sipClient.socket.on('message', (message) => console.log(message));
+  sipClient.socket.on('message', (message) => Logger.debug('onMessage', message));
 
   sipClient.on(EVENT_INVITE, () => sendWebhook(doorphone));
   sipClient.on(EVENT_CLOSE, () => {
-    console.log('SIP socket closed. Reconnecting...');
+    Logger.log('SIP socket closed. Reconnecting...');
     setTimeout(() => register(), RECONNECT_TIMEOUT);
   });
 
@@ -52,20 +52,20 @@ function connectSocket(doorphone) {
 
 function start() {
   if (started || !process.env.APP_WEBHOOK_URL || !isTokenProvided()) {
-    console.log('WEBHOOK_URL is not defined. SIP agent will not start');
+    Logger.warn('WEBHOOK_URL is not defined. SIP agent will not start');
     return;
   }
 
   started = true;
 
-  console.log('Starting SIP agent ...');
+  Logger.log('Starting SIP agent ...');
 
   /**
    * @var {{doorphones: []}} response
    */
   getDevices().then((response) => {
     response.doorphones.forEach((doorphone) => connectSocket(doorphone));
-  }).catch((error) => console.error(error));
+  }).catch((error) => Logger.error(error));
 }
 
 export default {

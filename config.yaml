@@ -1,5 +1,5 @@
 name: "Домофон EVO"
-version: 1.0.8
+version: 1.0.9
 slug: doorphone
 description: "Интеграция с домофоном EVO"
 url: https://github.com/paulloft/ha-evo73
@@ -24,7 +24,9 @@ map:
 options:
   phone_number: null
   webhook_url: null
+  log_level: info
 
 schema:
   phone_number: "match(7[0-9]{10})"
   webhook_url: "str?"
+  log_level: list(debug|verbose|info|warnings|errors|none)

@@ -5,12 +5,13 @@ import Webserver, { getServerUrl } from './Webserver.js';
 import HttpException from './Utils/HttpException.js';
 import { getInfo, getSnapshotImageResponse, sendWebhook } from './Actions.js';
 import SipAgent from './SipAgent.js';
+import Logger from './Logger.js';
 
 env.env('local').env();
 
 if (!process.env.APP_PHONE_NUMBER) {
-  console.warn('[ERROR] Номер телефона не указан в настройках окружения');
-  console.info('[INFO] Создайте файл .env.local с содержимым APP_PHONE_NUMBER=79000000000');
+  Logger.warn('[ERROR] Номер телефона не указан в настройках окружения');
+  Logger.info('[INFO] Создайте файл .env.local с содержимым APP_PHONE_NUMBER=79000000000');
   process.exit(1);
 }
 
@@ -48,19 +49,19 @@ Webserver.add('get', '/test-webhook', async (params) => {
 });
 
 Webserver.start(() => {
-  console.info('------------------------------------------------------------------------------------------');
-  console.info(`  EVO 73 Управление домофоном. Web Сервер запущен по адресу: ${getServerUrl()}`);
-  console.info('------------------------------------------------------------------------------------------');
-  console.info('  Получить список устройств           /devices');
-  console.info('  Получить ссылку на стрим с камеры   /stream?deviceId=<int|null>&high=<bool|true>');
-  console.info('  Получить изображение с камеры       /snapshot?deviceId=<int|null>&compress=<bool|false>');
-  console.info('  Открыть дверь                       /open?deviceId=<int|null>&doorNum=<int|null>');
-  console.info('  Имитация события звонка в дверь     /test-webhook?deviceId=<int|null>');
-  console.info('------------------------------------------------------------------------------------------');
+  Logger.info('------------------------------------------------------------------------------------------');
+  Logger.info(`  EVO 73 Управление домофоном. Web Сервер запущен по адресу: ${getServerUrl()}`);
+  Logger.info('------------------------------------------------------------------------------------------');
+  Logger.info('  Получить список устройств           /devices');
+  Logger.info('  Получить ссылку на стрим с камеры   /stream?deviceId=<int|null>&high=<bool|true>');
+  Logger.info('  Получить изображение с камеры       /snapshot?deviceId=<int|null>&compress=<bool|false>');
+  Logger.info('  Открыть дверь                       /open?deviceId=<int|null>&doorNum=<int|null>');
+  Logger.info('  Имитация события звонка в дверь     /test-webhook?deviceId=<int|null>');
+  Logger.info('------------------------------------------------------------------------------------------');
   if (!isTokenProvided()) {
-    console.warn('  [ВНИМАНИЕ] Токен авторизации отсутствует!');
-    console.warn('  Откройте Web-интерфейс и пройдите процедуру первичной авторизации.');
-    console.info('------------------------------------------------------------------------------------------');
+    Logger.warn('  [ВНИМАНИЕ] Токен авторизации отсутствует!');
+    Logger.warn('  Откройте Web-интерфейс и пройдите процедуру первичной авторизации.');
+    Logger.info('------------------------------------------------------------------------------------------');
   }
 });
 

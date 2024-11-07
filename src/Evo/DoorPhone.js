@@ -1,6 +1,7 @@
 import SecureApi, { normalizeUrl } from './SecureApi.js';
 import { fetchUrl } from '../Utils/Api.js';
 import { getUrlString } from '../Utils/Helpers.js';
+import Logger from '../Logger.js';
 
 let devices;
 
@@ -39,7 +40,7 @@ export async function openDoor(deviceId = null, doorNum = null) {
 
   return SecureApi.postJson(`doorphone://doorphone/${deviceId}/open-door/${doorNum || 1}`)
     .then((response) => {
-      console.info('Дверь открыта');
+      Logger.log('Дверь открыта');
       return response;
     });
 }

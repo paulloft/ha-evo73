@@ -3,3 +3,5 @@ configuration:
     name: Phone number
   webhook_url:
     name: Webhook URL
+  log_level:
+    name: What information to output to the log

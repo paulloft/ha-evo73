@@ -3,6 +3,7 @@ import { parse } from 'node:querystring';
 import HttpException from './Utils/HttpException.js';
 import { getFileMimeType, getPathApp } from './Utils/Helpers.js';
 import fs from 'node:fs';
+import Logger from './Logger.js';
 
 const routes = { GET: {}, POST: {} };
 
@@ -14,7 +15,7 @@ export function getServerUrl() {
 
 function handleError(error, response) {
   const statusCode = error?.cause?.status || 400;
-  console.error(error);
+  Logger.debug('Error', error);
   response.writeHead(statusCode, { 'Content-Type': 'application/json' });
   response.write(JSON.stringify({ code: statusCode, error: error.message, status: false }));
 }

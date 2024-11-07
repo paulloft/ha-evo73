@@ -16,7 +16,14 @@ const router = createHashRouter([
           {
             index: true,
             Component: Devices,
-            loader: ({ request }) => sendRequest('/devices', request),
+            loader: ({ request }) => sendRequest('/devices', request)
+              .catch((response) => {
+                if (response.status === 401) {
+                  return redirect('/auth');
+                }
+
+                return Promise.reject(response);
+              }),
           },
         ],
       },
