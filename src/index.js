@@ -1,9 +1,9 @@
 import env from 'custom-env';
-import { createToken, isTokenProvided, sendSms } from './Evo/SecureApi.js';
 import { getDevices, getDoorphone, getFirstDeviceId, getStreamUrl, openDoor } from './Evo/DoorPhone.js';
+import { getInfo, getSnapshotImageResponse, sendWebhook } from './Actions.js';
+import { createToken, isTokenProvided, sendSms } from './Evo/SecureApi.js';
 import Webserver, { getServerUrl } from './Webserver.js';
 import HttpException from './Utils/HttpException.js';
-import { getInfo, getSnapshotImageResponse, sendWebhook } from './Actions.js';
 import SipAgent from './SipAgent.js';
 import Logger from './Logger.js';
 
@@ -61,7 +61,7 @@ Webserver.start(() => {
   if (!isTokenProvided()) {
     Logger.warn('  [ВНИМАНИЕ] Токен авторизации отсутствует!');
     Logger.warn('  Откройте Web-интерфейс и пройдите процедуру первичной авторизации.');
-    Logger.info('------------------------------------------------------------------------------------------');
+    Logger.warn('------------------------------------------------------------------------------------------');
   }
 });
 
