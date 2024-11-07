@@ -32,7 +32,7 @@ export default function Authorization() {
   return (
     <div className="text-center">
       <div className="alert alert-warning">
-        Токен авторизации отсутствует! Для получения нового токена введите код авторизации из СМС сообщения.
+        <h4>Токен авторизации отсутствует!</h4> Для получения нового токена введите код авторизации из СМС сообщения.
       </div>
 
       {error.length > 0 && (

@@ -7,7 +7,7 @@ export function sendRequest(path, request = {}) {
     .then(async (response) => {
       const result = await response.json();
       if (response.status !== 200) {
-        return Promise.reject(result.error);
+        return Promise.reject(response);
       }
 
       return result;

@@ -1,8 +1,9 @@
 import EventEmitter from 'node:events';
 import { getLocalIpAddress } from './Utils.js';
 import { createAuthRequest, createRegisterRequest } from './Messages/RequestMessages.js';
-import { CLIENT_PORT, EXPIRES, SERVER_PORT } from './Constants.js';
-import SipSocket, { EVENT_CLOSE_CONNECTION, EVENT_REQUEST } from './SipSocket.js';
+import { CLIENT_PORT, KEEPALIVE_INTERVAL, SERVER_PORT } from './Constants.js';
+import SipSocket, { EVENT_CLOSE_CONNECTION, EVENT_CONNECT_ERROR, EVENT_REQUEST } from './SipSocket.js';
+import Logger from '../Logger.js';
 
 export const EVENT_INVITE = 'invite';
 export const EVENT_BYE = 'bye';
@@ -64,7 +65,7 @@ export default function SipClient({ username, password, serverHost, serverPort =
         socket.close();
         stopKeepAlive();
       });
-    }, EXPIRES * 1000 - 100);
+    }, KEEPALIVE_INTERVAL);
   }
 
   const register = () => {
@@ -87,13 +88,18 @@ export default function SipClient({ username, password, serverHost, serverPort =
         break;
 
       default:
-        console.log(`Unknown method ${SipRequest.method}`, SipRequest);
+        Logger.warn(`Unknown method ${SipRequest.method}`);
+        Logger.debug('Unknown method request', SipRequest);
     }
   });
 
   socket.on(EVENT_CLOSE_CONNECTION, () => {
     stopKeepAlive();
     eventBus.emit(EVENT_CLOSE);
+  });
+
+  socket.on(EVENT_CONNECT_ERROR, (error) => {
+    Logger.error('UDP socket closed unexpectedly', error);
   });
 
   return {

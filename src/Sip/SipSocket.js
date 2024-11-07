@@ -66,7 +66,6 @@ export default class SipSocket {
     this.socket.bind(this.listenPort, this.listenIp);
 
     this.socket.on('error', (error) => {
-      console.error('UDP socket closed unexpectedly', error);
       this.event.emit(EVENT_CONNECT_ERROR, error);
       this.socket.close();
     });
@@ -110,7 +109,7 @@ export default class SipSocket {
   fetch(SipRequest) {
     return new Promise((resolve, reject) => {
       this.sendMessage(SipRequest)
-        .then(() => RequestBucket.addResponseResolver(SipRequest.id, resolve))
+        .then(() => RequestBucket.addResponseResolver(SipRequest.id, resolve, reject))
         .catch((error) => reject(error));
     });
   };

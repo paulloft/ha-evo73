@@ -1,4 +1,5 @@
 import { generateBranch } from './Utils.js';
+import { REQUEST_TIMEOUT } from './Constants.js';
 
 const bucket = {
   count: 1,
@@ -8,15 +9,21 @@ const bucket = {
 };
 
 function resolveResponse(response) {
-  const resolver = bucket.resolvers[response.id];
-  if (resolver) {
+  if (bucket.resolvers[response.id]) {
+    const [resolver, timeoutTimer] = bucket.resolvers[response.id];
+    clearTimeout(timeoutTimer);
     resolver(response);
     delete bucket.resolvers[response.id];
   }
 }
 
-function addResponseResolver(id, resolver) {
-  bucket.resolvers[id] = resolver;
+function addResponseResolver(id, resolver, reject) {
+  const timeoutTimer = setTimeout(() => {
+    if (bucket.resolvers[id]) {
+      reject(new Error('Connection timeout'));
+    }
+  }, REQUEST_TIMEOUT);
+  bucket.resolvers[id] = [resolver, timeoutTimer];
 }
 
 function getRequestNumber() {
@@ -45,8 +52,8 @@ function getRequestTag(request) {
 }
 
 export default {
-  resolveResponse,
   addResponseResolver,
+  resolveResponse,
   getRequestNumber,
   storeRequest,
   completeRequest,
