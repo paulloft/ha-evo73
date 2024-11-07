@@ -1,5 +1,5 @@
-const LEVEL_ERROR = ['errors'];
-const LEVEL_WARN = ['warnings', ...LEVEL_ERROR];
+const LEVEL_ERROR = ['error'];
+const LEVEL_WARN = ['warn', ...LEVEL_ERROR];
 const LEVEL_INFO = ['info', ...LEVEL_WARN];
 const LEVEL_VERBOSE = ['log', ...LEVEL_INFO];
 const LEVEL_DEBUG = ['debug', ...LEVEL_VERBOSE];

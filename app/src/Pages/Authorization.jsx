@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sendRequest } from 'app/Utils';
 
 const parseResponse = async (response) => {
   const json = await response.json();
@@ -12,7 +13,7 @@ export default function Authorization() {
   const [code, setCode] = useState('');
   const requestCode = () => {
     setRequested(true);
-    fetch('/sendsms')
+    sendRequest('/sendsms')
       .then(parseResponse)
       .then(() => setMessage('СМС успешно запрошено'))
       .catch((error) => setError(error))
@@ -22,7 +23,7 @@ export default function Authorization() {
   const onAuth = (event) => {
     event.preventDefault();
     setRequested(true);
-    fetch(`/auth?code=${code}`)
+    sendRequest(`/auth?code=${code}`)
       .then(parseResponse)
       .then(() => location.reload())
       .catch((error) => setError(error))
