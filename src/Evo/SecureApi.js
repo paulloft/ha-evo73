@@ -44,7 +44,7 @@ async function refreshMainToken() {
   }).catch((response) => {
     if (response.status === 401) {
       Logger.error('Refresh main token failed. Token expired or invalid');
-      Storage.save(NAMESPACE_DEFAULT, null);
+      Storage.save(namespaces[NAMESPACE_DEFAULT].tokenName, '');
     }
 
     return response;
@@ -60,7 +60,7 @@ function refreshDoorPhoneToken() {
     .catch((response) => {
       if (response.status === 401) {
         Logger.error('Refresh doorphone token failed. Token expired or invalid');
-        Storage.save(NAMESPACE_DOORPHONE, null);
+        Storage.save(namespaces[NAMESPACE_DOORPHONE].tokenName, '');
       }
 
       return Promise.reject(response);
