@@ -17,7 +17,7 @@ export default {
     const ALLOWED_TYPES = LEVELS[process.env.APP_LOG_LEVEL] || [];
     if (ALLOWED_TYPES.includes(type)) {
       const time = (new Date()).toISOString();
-      console[type](`[${time}]`, `[${type.toUpperCase()}]`, ...args);
+      console[type](`[${time}][${type.toUpperCase()}]`, ...args);
     }
   },
 
