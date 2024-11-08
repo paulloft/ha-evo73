@@ -39,7 +39,7 @@ export default function Devices() {
         {devices.doorphones.map((doorphone) => (
           <div className={cardClass} key={doorphone.id}>
             <div className="card">
-              <VideoPlayer poster={doorphone.snapshot} src={getUrl('/stream')} className="rounded" />
+              <VideoPlayer poster={doorphone.snapshot} src={getUrl('/stream?high=0')} className="rounded" />
               <div className="card-body">
                 <h5 className="card-title">
                   {doorphone.address}{doorphone.apartment && (`, кв. ${doorphone.apartment}`)}

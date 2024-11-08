@@ -35,8 +35,8 @@ Webserver.add('get', '/open', (params) => openDoor(
   params.get('doorNum'),
 ));
 Webserver.add('get', '/stream', async (params, request, response) => {
-  const high = params.get('high');
-  const streamUrl = await getStreamUrl(params.get('deviceId'), high === undefined ? true : high);
+  const high = parseInt(params.get('high'), 10);
+  const streamUrl = await getStreamUrl(params.get('deviceId'), !!high);
   response.writeHead(302, { Location: streamUrl });
 });
 
