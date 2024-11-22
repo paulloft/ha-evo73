@@ -1,7 +1,7 @@
 # https://github.com/hassio-addons/addon-base/releases
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:16.2.1
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:16.3.6
 
-FROM node:latest AS nodejs
+FROM node:22.11-alpine AS nodejs
 
 COPY --link ./app/ /usr/app/
 WORKDIR /usr/app
@@ -15,8 +15,8 @@ COPY --from=nodejs /usr/public/ /app/public/
 COPY .env package.json package-lock.json  /app/
 
 RUN chmod a+x /usr/bin/app \
-&& chmod a+x /etc/services.d/app/run \
-&& chmod a+x /etc/services.d/app/finish
+    && chmod a+x /etc/services.d/app/run \
+    && chmod a+x /etc/services.d/app/finish
 
 WORKDIR /app
 RUN apk add --no-cache nodejs npm && npm i
