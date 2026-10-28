@@ -11,3 +11,5 @@ test.*
 
 .env.local
 *.tsbuildinfo
+__pycache__/
+*.pyc

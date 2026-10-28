@@ -9,6 +9,7 @@ import SipResponse from '../src/Sip/Messages/SipResponse.js';
 import { getHeader } from '../src/Sip/Types.js';
 import type { Doorphone } from '../src/Types.js';
 import { sipServer, responseFor, invite, waitUntil } from './sip-fixture.js';
+import { callEvents } from '../src/HomeAssistant/CallEvents.js';
 
 const originalWebhook = process.env.APP_WEBHOOK_URL;
 let errors: string[];
@@ -24,6 +25,42 @@ afterEach(() => {
   mock.restoreAll();
   if (originalWebhook === undefined) delete process.env.APP_WEBHOOK_URL;
   else process.env.APP_WEBHOOK_URL = originalWebhook;
+});
+
+test('SIP starts without a webhook and delivers one Home Assistant event per call', async context => {
+  delete process.env.APP_WEBHOOK_URL;
+  context.mock.method(globalThis, 'fetch', () => {
+    throw new Error('No HTTP webhook should be sent');
+  });
+  let registrations = 0;
+  const server = await sipServer((message, peer) => {
+    if (message instanceof SipRequest && message.method === 'REGISTER') {
+      registrations++;
+      peer.write(responseFor(message).toString());
+    }
+  });
+  context.mock.method(SecureApi, 'getJson', async () => ({ doorphones: [{
+    id: 123, address: 'Test', apartment_sip_settings: {
+      login: 'user@account.domain', sip_password: 'test', sip_address: `127.0.0.1:${server.port}`,
+    },
+  }] }));
+  try {
+    const signal = new AbortController().signal;
+    const initial = await callEvents.poll(null, signal);
+    SipAgent.start();
+    await waitUntil(() => registrations === 1);
+    const peer = [...server.connections][0];
+    peer.write(invite('ha-call').toString() + invite('ha-call').toString());
+    const batch = await callEvents.poll(initial.cursor, signal);
+    assert.equal(batch.events.length, 1);
+    assert.equal(batch.events[0].deviceId, 123);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal((await callEvents.poll(initial.cursor, signal)).events.length, 1);
+    assert.equal(errors.length, 0);
+  } finally {
+    SipAgent.stop();
+    await server.close();
+  }
 });
 
 test('failed initial device loading retries without another external start call', { timeout: 8000 }, async () => {

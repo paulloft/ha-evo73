@@ -3,7 +3,7 @@ import type SipRequest from './Sip/Messages/SipRequest.js';
 import { getDevices } from './Evo/DoorPhone.js';
 import SipClient, { EVENT_INVITE, EVENT_REGISTER, EVENT_REGISTRATION_ERROR } from './Sip/SipClient.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
-import { sendWebhook } from './Actions.js';
+import { publishIncomingCall } from './Actions.js';
 import { RECONNECT_TIMEOUT } from './Sip/Constants.js';
 import { getHeader } from './Sip/Types.js';
 import { getErrorMessage } from './Utils/HttpException.js';
@@ -48,7 +48,7 @@ function notifyIncomingCall(managed: ManagedClient, request: SipRequest): void {
     }
   }
   Logger.info(`SIP ${device.id}: incoming call`);
-  void sendWebhook(device).catch((error: unknown) => {
+  void publishIncomingCall(device).catch((error: unknown) => {
     const fallback = error instanceof Response ? `HTTP ${error.status}` : 'HTTP request failed';
     Logger.error(`SIP ${device.id}: webhook failed`, getErrorMessage(error, fallback));
   });
@@ -148,7 +148,7 @@ async function loadDevices(currentGeneration: number): Promise<void> {
 }
 
 function start(): void {
-  if (!process.env.APP_WEBHOOK_URL || !isTokenProvided()) {
+  if (!isTokenProvided()) {
     return;
   }
   enabled = true;

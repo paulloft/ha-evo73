@@ -19,3 +19,14 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+
+  homeassistant:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test integration in Home Assistant
+        run: |
+          docker run --rm --entrypoint python \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" -w /workspace \
+            ghcr.io/home-assistant/home-assistant:stable \
+            -m unittest discover -s tests/homeassistant -v

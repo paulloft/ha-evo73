@@ -1,12 +1,14 @@
 import { getIntParam } from './Utils/Params.js';
 import { getDevices, getDoorphone, getFirstDeviceId, getStreamUrl, openDoor } from './Evo/DoorPhone.js';
-import { getInfo, getSnapshotImageResponse, sendWebhook } from './Actions.js';
+import { getInfo, getSnapshotImageResponse, publishIncomingCall } from './Actions.js';
 import { createToken, sendSms, sendCall } from './Evo/SecureApi.js';
 import type { createWebserver } from './Webserver.js';
 import HttpException from './Utils/HttpException.js';
 import SipAgent from './SipAgent.js';
+import { registerHomeAssistantRoutes } from './HomeAssistant/Routes.js';
 
 export function registerRoutes(webserver: ReturnType<typeof createWebserver>): void {
+  registerHomeAssistantRoutes(webserver);
   webserver.add('get', '/info', () => getInfo());
   webserver.add('get', '/sendsms', () => sendSms());
   webserver.add('get', '/sendcall', () => sendCall());
@@ -37,7 +39,7 @@ export function registerRoutes(webserver: ReturnType<typeof createWebserver>): v
     const deviceId = getIntParam(params, 'deviceId') ?? await getFirstDeviceId();
     const doorphone = await getDoorphone(deviceId);
 
-    const response = await sendWebhook(doorphone);
+    const response = await publishIncomingCall(doorphone);
     return { status: true, response };
   });
 }

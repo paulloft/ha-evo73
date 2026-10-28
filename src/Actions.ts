@@ -4,6 +4,7 @@ import { fetchUrl } from './Utils/Api.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
 import { getIntParam } from './Utils/Params.js';
 import type { Doorphone, InfoResponse } from './Types.js';
+import { callEvents } from './HomeAssistant/CallEvents.js';
 
 export async function getSnapshotImageResponse(params: URLSearchParams, _request: Request, response: Response): Promise<void> {
   const compress = ['true', '1'].includes(params.get('compress') || '');
@@ -12,18 +13,30 @@ export async function getSnapshotImageResponse(params: URLSearchParams, _request
   response.send(Buffer.from(await upstream.arrayBuffer()));
 }
 
-export async function sendWebhook(doorphone: Doorphone) {
-  const webhookUrl = process.env.APP_WEBHOOK_URL;
-  if (!webhookUrl) {
-    throw new Error('Webhook отключен');
-  }
-  const data = {
+function getWebhookPayload(doorphone: Doorphone) {
+  return {
     address: doorphone.address,
     apartment: doorphone.apartment,
     entrance: doorphone.entrance,
     openDoorUrl: doorphone.door_open_url,
     snapshot: getSnapshotUrl(doorphone.id, true),
   };
+}
+
+export async function publishIncomingCall(doorphone: Doorphone) {
+  callEvents.publish(doorphone.id);
+  if (process.env.APP_WEBHOOK_URL) {
+    return sendWebhook(doorphone);
+  }
+  return getWebhookPayload(doorphone);
+}
+
+export async function sendWebhook(doorphone: Doorphone) {
+  const webhookUrl = process.env.APP_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error('Webhook отключен');
+  }
+  const data = getWebhookPayload(doorphone);
   await fetchUrl(webhookUrl, { method: 'POST', body: JSON.stringify(data), signal: AbortSignal.timeout(30000) });
   return data;
 }

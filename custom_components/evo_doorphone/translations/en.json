@@ -1,0 +1,55 @@
+{
+  "title": "EVO Doorphone",
+  "config": {
+    "step": {
+      "user": {
+        "title": "EVO Doorphone",
+        "description": "Connect to the EVO add-on after authorizing it in its web interface. Use its internal address, not the ingress URL.",
+        "data": {
+          "url": "Add-on URL"
+        }
+      },
+      "reconfigure": {
+        "title": "EVO Doorphone",
+        "description": "Connect to the EVO add-on after authorizing it in its web interface. Use its internal address, not the ingress URL.",
+        "data": {
+          "url": "Add-on URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Enter a valid HTTP or HTTPS URL.",
+      "not_authorized": "Authorize EVO in the add-on web interface first.",
+      "cannot_connect": "Cannot connect. Check the address and update the add-on to a compatible version."
+    },
+    "abort": {
+      "already_configured": "This EVO add-on is already configured.",
+      "reconfigure_successful": "EVO connection updated.",
+      "unique_id_mismatch": "This address points to a different EVO add-on instance."
+    }
+  },
+  "entity": {
+    "button": {
+      "open_door": {
+        "name": "Open door"
+      }
+    },
+    "camera": {
+      "camera": {
+        "name": "Camera"
+      }
+    },
+    "event": {
+      "doorbell": {
+        "name": "Doorbell",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "ring": "Ring"
+            }
+          }
+        }
+      }
+    }
+  }
+}
