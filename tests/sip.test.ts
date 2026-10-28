@@ -165,6 +165,56 @@ test('INVITE during digest registration rings without answering, deduplicates no
   } finally { client.stop(); await server.close(); }
 });
 
+test('declining ringing calls keeps final responses across retransmissions, ACK and CANCEL', async () => {
+  const server = await sipServer((message, peer) => {
+    if (message instanceof SipRequest && message.method === 'REGISTER') {
+      peer.write(responseFor(message).toString());
+    }
+  });
+  const client = SipClient(options(server.port));
+  const responses = () => server.messages.filter(message => message instanceof SipResponse);
+  let notifications = 0;
+  client.on('invite', () => { notifications++; });
+  try {
+    await client.register();
+    const peer = [...server.connections][0];
+    client.declineCalls();
+    peer.write(invite('active').toString() + invite('cancelled').toString() + invite('ended').toString());
+    await waitUntil(() => responses().length === 3);
+    const ringing = responses()[0];
+    peer.write(invite('cancelled', 'CANCEL').toString() + invite('ended', 'BYE').toString());
+    await waitUntil(() => responses().length === 6);
+    client.declineCalls();
+    client.declineCalls();
+    await waitUntil(() => responses().length === 7);
+    const declined = responses()[6];
+    assert.equal(declined.statusCode, 603);
+    assert.equal(declined.statusName, 'Decline');
+    for (const header of ['Call-ID', 'From', 'To', 'CSeq', 'Via', 'Record-Route']) {
+      assert.deepEqual(getHeaderValues(declined.headers, header), getHeaderValues(ringing.headers, header));
+    }
+    peer.write(invite('active', 'ACK').toString() + invite('active', 'CANCEL').toString() + invite('active').toString());
+    await waitUntil(() => responses().length === 9);
+    assert.deepEqual(responses().slice(7).map(response => response.statusCode), [200, 603]);
+    assert.equal(notifications, 3);
+    peer.destroy();
+    await waitUntil(() => server.messages.filter(message => message instanceof SipRequest && message.method === 'REGISTER').length === 2);
+    const replacement = [...server.connections][0];
+    replacement.write(invite('active').toString());
+    await waitUntil(() => responses().length === 10);
+    assert.equal(responses()[9].statusCode, 603);
+    assert.equal(notifications, 3);
+    replacement.write(invite('next').toString());
+    await waitUntil(() => responses().length === 11);
+    assert.equal(responses()[10].statusCode, 180);
+    assert.equal(notifications, 4);
+    assert.ok(!responses().some(response => response.statusCode === 200 && getHeader(response.headers, 'CSeq').endsWith('INVITE')));
+  } finally {
+    client.stop();
+    await server.close();
+  }
+});
+
 test('registration renews before the server-granted expiry instead of waiting a fixed interval', async () => {
   let attempts = 0;
   const server = await sipServer((message, peer) => {

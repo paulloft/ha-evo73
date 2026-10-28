@@ -1,5 +1,6 @@
 import { test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import type { Socket } from 'node:net';
 import SipAgent from '../src/SipAgent.js';
 import SecureApi from '../src/Evo/SecureApi.js';
 import Storage from '../src/Storage.js';
@@ -11,6 +12,7 @@ import type { Doorphone } from '../src/Types.js';
 import { sipServer, responseFor, invite, waitUntil } from './sip-fixture.js';
 import { callEvents } from '../src/HomeAssistant/CallEvents.js';
 import { courierMode } from '../src/CourierMode.js';
+import { openDoor } from '../src/Evo/DoorPhone.js';
 
 const originalWebhook = process.env.APP_WEBHOOK_URL;
 let errors: string[];
@@ -74,7 +76,10 @@ test('SIP starts without a webhook and delivers one Home Assistant event per cal
     assert.equal((await callEvents.poll(initial.cursor, signal)).events.length, 1);
     assert.equal(opens, 1);
     assert.equal(courierMode.isWaiting(123), true);
+    assert.ok(!server.messages.some(message => message instanceof SipResponse && message.statusCode === 603));
     finishOpening?.();
+    await waitUntil(() => server.messages.some(message => message instanceof SipResponse
+      && message.statusCode === 603 && getHeader(message.headers, 'Call-ID') === 'ha-call'));
     courierMode.setWaiting(123, false);
     peer.write(invite('later-call').toString());
     const later = await callEvents.poll(batch.cursor, AbortSignal.timeout(2000));
@@ -96,6 +101,52 @@ test('failed initial device loading retries without another external start call'
   });
   SipAgent.start();
   await waitUntil(() => attempts === 2, 6500);
+});
+
+test('only successful door opening declines the matching doorphone and future calls still ring', async () => {
+  delete process.env.APP_WEBHOOK_URL;
+  const peers: Socket[] = [];
+  const server = await sipServer((message, peer) => {
+    if (message instanceof SipRequest && message.method === 'REGISTER') {
+      peers.push(peer);
+      peer.write(responseFor(message).toString());
+    }
+  });
+  let fail = true;
+  mock.method(SecureApi, 'postJson', async () => {
+    if (fail) {
+      throw new Error('Opening rejected');
+    }
+    return { status: true };
+  });
+  const device: Doorphone = { id: 123, address: 'First', apartment_sip_settings: {
+    login: 'user@account.domain', sip_password: 'test-only', sip_address: `127.0.0.1:${server.port}`,
+  } };
+  const responses = () => server.messages.filter(message => message instanceof SipResponse);
+  try {
+    SipAgent.connectSocket(device);
+    await waitUntil(() => peers.length === 1);
+    SipAgent.connectSocket({ ...device, id: 456 });
+    await waitUntil(() => peers.length === 2);
+    peers[0].write(invite('first-door').toString());
+    peers[1].write(invite('other-door').toString());
+    await waitUntil(() => responses().length === 2);
+    await assert.rejects(openDoor(123), /Opening rejected/);
+    assert.ok(!responses().some(response => response.statusCode === 603));
+    fail = false;
+    await openDoor(123);
+    await waitUntil(() => responses().length === 3);
+    assert.equal(responses()[2].statusCode, 603);
+    assert.equal(getHeader(responses()[2].headers, 'Call-ID'), 'first-door');
+    await openDoor(123);
+    peers[0].write(invite('first-door').toString() + invite('new-call').toString());
+    await waitUntil(() => responses().length === 5);
+    assert.deepEqual(responses().slice(3).map(response => response.statusCode), [603, 180]);
+    assert.ok(!responses().some(response => response.statusCode === 603 && getHeader(response.headers, 'Call-ID') === 'other-door'));
+  } finally {
+    SipAgent.stop();
+    await server.close();
+  }
 });
 
 test('webhook rejection is caught, retransmissions do not duplicate it, and later calls still notify', async () => {
@@ -131,6 +182,7 @@ test('webhook rejection is caught, retransmissions do not duplicate it, and late
     assert.equal(notifications.length, 1);
     assert.equal(opens, 1);
     assert.equal(courierMode.isWaiting(123), false);
+    assert.ok(!server.messages.some(message => message instanceof SipResponse && message.statusCode === 603));
     assert.ok(errors.some(message => message.includes('webhook failed')));
     assert.ok(errors.some(message => message.includes('door opening failed')));
     peer.write(invite('second').toString());

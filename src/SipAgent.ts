@@ -8,6 +8,7 @@ import { RECONNECT_TIMEOUT } from './Sip/Constants.js';
 import { getHeader } from './Sip/Types.js';
 import { getErrorMessage } from './Utils/HttpException.js';
 import Logger from './Logger.js';
+import { doorEvents } from './DoorEvents.js';
 
 interface ManagedClient {
   client: ReturnType<typeof SipClient>;
@@ -18,6 +19,7 @@ interface ManagedClient {
 
 const MAX_NOTIFIED_CALLS = 1000;
 const clients = new Map<number, ManagedClient>();
+doorEvents.on('opened', deviceId => clients.get(deviceId)?.client.declineCalls());
 let starting: Promise<void> | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let enabled = false;

@@ -30,4 +30,5 @@ export const RESPONSES: Record<number, string> = {
   500: 'Server Internal Error',
   503: 'Service Unavailable',
   504: 'Server Time-out',
+  603: 'Decline',
 };

@@ -4,6 +4,7 @@ import { getUrlString } from '../Utils/Helpers.js';
 import HttpException from '../Utils/HttpException.js';
 import Logger from '../Logger.js';
 import type { DevicesResponse, Doorphone, CameraResponse } from '../Types.js';
+import { doorEvents } from '../DoorEvents.js';
 
 let devices: DevicesResponse | undefined;
 
@@ -36,6 +37,7 @@ export async function getFirstDeviceId(): Promise<number> {
 export async function openDoor(deviceId?: number | null, doorNum = 1): Promise<unknown> {
   const id = deviceId ?? await getFirstDeviceId();
   const response = await SecureApi.postJson(`doorphone://doorphone/${id}/open-door/${doorNum}`);
+  doorEvents.emit('opened', id);
   Logger.log('Дверь открыта');
   return response;
 }

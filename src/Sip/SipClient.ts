@@ -20,6 +20,7 @@ const MAX_TRACKED_CALLS = 100;
 interface IncomingCall {
   request: SipRequest;
   tag: string;
+  status: 180 | 487 | 603;
 }
 
 interface ClientEvents {
@@ -147,6 +148,19 @@ export default function SipClient(options: ClientOptions) {
     void socket.sendMessage(createResponse(code, request, {}, '', tag)).catch(reconnect);
   }
 
+  function declineCalls(): void {
+    if (stopped) {
+      return;
+    }
+    for (const call of calls.values()) {
+      if (call.status === 180) {
+        // A global rejection also stops other forked destinations ringing.
+        call.status = 603;
+        reply(603, call.request, call.tag);
+      }
+    }
+  }
+
   socket.on(EVENT_REQUEST, request => {
     if (stopped) {
       return;
@@ -157,9 +171,12 @@ export default function SipClient(options: ClientOptions) {
     switch (request.method) {
       case 'INVITE':
         // Observe the call. A 200 here would answer it and stop the phone ringing.
-        reply(180, request, tag);
+        reply(existing?.status ?? 180, request, tag);
+        if (existing?.status === 180) {
+          existing.request = request;
+        }
         if (!existing) {
-          calls.set(id, { request, tag });
+          calls.set(id, { request, tag, status: 180 });
           if (calls.size > MAX_TRACKED_CALLS) {
             const oldest = calls.keys().next().value;
             if (oldest !== undefined) {
@@ -171,11 +188,15 @@ export default function SipClient(options: ClientOptions) {
         break;
       case 'CANCEL':
         reply(200, request, tag);
-        if (existing) {
+        if (existing?.status === 180) {
+          existing.status = 487;
           reply(487, existing.request, tag);
         }
         break;
       case 'BYE':
+        if (existing?.status === 180) {
+          existing.status = 487;
+        }
         reply(200, request, tag);
         eventBus.emit(EVENT_BYE, request);
         break;
@@ -217,5 +238,5 @@ export default function SipClient(options: ClientOptions) {
     calls.clear();
   }
 
-  return { register, stop, socket, on: eventBus.on.bind(eventBus), once: eventBus.once.bind(eventBus) };
+  return { register, stop, declineCalls, socket, on: eventBus.on.bind(eventBus), once: eventBus.once.bind(eventBus) };
 }
