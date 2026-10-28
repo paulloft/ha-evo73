@@ -1,6 +1,6 @@
 {
   "name": "evo-app",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Evo application",
   "scripts": {
     "build": "npm run typecheck && webpack --mode=production",
