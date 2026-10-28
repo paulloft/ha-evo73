@@ -1,30 +1,117 @@
-name: Send submodule updates to parent repo
+name: Publish add-on images
 
 on:
   push:
-    branches: 
+    branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-addon
+  cancel-in-progress: false
 
 jobs:
-  update:
+  build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
     steps:
-      - uses: actions/checkout@v2
-        with: 
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install YAML parser
+        run: python3 -m pip install --disable-pip-version-check PyYAML
+
+      - name: Read image version and platforms from config.yaml
+        id: metadata
+        run: |
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+          import yaml
+
+          config = yaml.safe_load(Path('config.yaml').read_text())
+          platforms = {'amd64': 'linux/amd64', 'aarch64': 'linux/arm64'}
+          if not config['arch']:
+              raise SystemExit('config.yaml must declare at least one architecture')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print(f"image={config['image']}", file=output)
+              print(f"version={config['version']}", file=output)
+              print('platforms=' + ','.join(platforms[arch] for arch in config['arch']), file=output)
+          PY
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish all platforms
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ steps.metadata.outputs.platforms }}
+          push: true
+          tags: ${{ steps.metadata.outputs.image }}:${{ steps.metadata.outputs.version }}
+          build-args: |
+            BUILD_VERSION=${{ steps.metadata.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify Home Assistant can pull the image anonymously
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/ghcr-public
+          IMAGE: ${{ steps.metadata.outputs.image }}:${{ steps.metadata.outputs.version }}
+        run: |
+          if ! docker manifest inspect "$IMAGE" > /dev/null; then
+            echo '::error::Set the GHCR package visibility to Public and rerun this workflow. Home Assistant must be able to pull without GitHub credentials.'
+            exit 1
+          fi
+
+  update:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the Home Assistant add-on repository
+        uses: actions/checkout@v7
+        with:
           repository: paulloft/ha-addons-repo
           token: ${{ secrets.PRIVATE_TOKEN_HA_REPO }}
-          submodules: true
 
-      - name: Pull & update submodules recursively
+      - name: Update EVO to the published commit
+        env:
+          ADDON_COMMIT: ${{ github.sha }}
+          ADDON_VERSION: ${{ needs.build.outputs.version }}
         run: |
-          git submodule update --init --recursive
-          git submodule update --recursive --remote
-
-      - name: Commit
-        run: |
+          git submodule update --init -- evo73
+          git -C evo73 fetch origin "$ADDON_COMMIT"
+          git -C evo73 checkout --detach "$ADDON_COMMIT"
+          git add evo73
+          if git diff --cached --quiet; then
+            echo 'The add-on repository already points to the published commit.'
+            exit 0
+          fi
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions - update submodules"
-          git add --all
-          git commit -m "Update submodules" || echo "No changes to commit"
+          git commit -m "Update EVO to $ADDON_VERSION"
           git push

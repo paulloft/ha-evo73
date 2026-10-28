@@ -1,21 +1,38 @@
 {
   "name": "evo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "paulloft",
   "license": "MIT",
   "description": "",
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js",
-    "watch": "node --watch src/index.js"
+    "start": "node --import=tsx src/index.ts",
+    "dev": "node --import=tsx --watch src/index.ts",
+    "watch": "npm run dev",
+    "build": "npm run build --workspace app",
+    "typecheck": "tsc -p tsconfig.tests.json && npm run typecheck --workspace app",
+    "lint": "npm run typecheck && eslint . --max-warnings=0",
+    "test": "node --import=tsx --test tests/*.test.ts",
+    "check": "npm run lint && npm test"
   },
   "dependencies": {
-    "custom-env": "^2.0.6",
-    "dgram": "^1.0.1",
-    "digest-header": "^1.1.0",
-    "lodash": "^4.17.21",
-    "ws": "^8.18.0"
+    "express": "^5.3.0",
+    "tsx": "^4.23.15"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24.12.1"
+  },
+  "workspaces": [
+    "app"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "typescript": "^7.0.2"
   }
 }

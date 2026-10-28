@@ -10,3 +10,4 @@ TEST*.xml
 test.*
 
 .env.local
+*.tsbuildinfo
