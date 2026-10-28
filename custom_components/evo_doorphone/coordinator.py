@@ -67,6 +67,8 @@ class EvoCoordinator(DataUpdateCoordinator[dict[int, Doorphone]]):
                     for listener in tuple(self._call_listeners):
                         listener(event)
                 self._cursor = batch.cursor
+                if batch.events:
+                    await self.async_request_refresh()
                 if disconnected:
                     _LOGGER.info("EVO call connection restored")
                 disconnected = False

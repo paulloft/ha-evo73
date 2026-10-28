@@ -5,6 +5,8 @@ import { isTokenProvided } from './Evo/SecureApi.js';
 import { getIntParam } from './Utils/Params.js';
 import type { Doorphone, InfoResponse } from './Types.js';
 import { callEvents } from './HomeAssistant/CallEvents.js';
+import { courierMode } from './CourierMode.js';
+import Logger from './Logger.js';
 
 export async function getSnapshotImageResponse(params: URLSearchParams, _request: Request, response: Response): Promise<void> {
   const compress = ['true', '1'].includes(params.get('compress') || '');
@@ -29,6 +31,14 @@ export async function publishIncomingCall(doorphone: Doorphone) {
     return sendWebhook(doorphone);
   }
   return getWebhookPayload(doorphone);
+}
+
+export async function handleIncomingCall(doorphone: Doorphone): Promise<void> {
+  const opening = courierMode.handleCall(doorphone.id).catch(() => {
+    Logger.error(`Courier ${doorphone.id}: door opening failed; mode disabled`);
+  });
+  // Notify independently of the opening request and its result.
+  await Promise.all([opening, publishIncomingCall(doorphone)]);
 }
 
 export async function sendWebhook(doorphone: Doorphone) {

@@ -23,7 +23,15 @@ class IntegrationTest(unittest.IsolatedAsyncioTestCase):
         shutil.copytree(
             Path("custom_components"), Path(self.config.name) / "custom_components"
         )
-        self.devices = [{"id": 123, "address": "Test entrance", "apartment": 42}]
+        self.devices = [
+            {
+                "id": 123,
+                "address": "Test entrance",
+                "apartment": 42,
+                "courierWaiting": False,
+            }
+        ]
+        self.courier_commands = []
         self.authorized = True
         self.status = 200
         self.device_status = 200
@@ -74,6 +82,14 @@ class IntegrationTest(unittest.IsolatedAsyncioTestCase):
             case "open":
                 self.commands.append(await request.json())
                 return web.json_response({"status": True})
+            case "courier":
+                payload = await request.json()
+                self.courier_commands.append(payload)
+                device = next(
+                    item for item in self.devices if item["id"] == payload["deviceId"]
+                )
+                device["courierWaiting"] = payload["enabled"]
+                return web.json_response({"courierWaiting": payload["enabled"]})
             case "snapshot":
                 return web.Response(body=b"\xff\xd8\xff", content_type="image/jpeg")
             case "stream":
@@ -131,7 +147,7 @@ class IntegrationTest(unittest.IsolatedAsyncioTestCase):
         entities = entity_registry.async_entries_for_config_entry(
             registry, entry.entry_id
         )
-        self.assertEqual(len(entities), 3)
+        self.assertEqual(len(entities), 4)
         devices = device_registry.async_entries_for_config_entry(
             device_registry.async_get(self.hass), entry.entry_id
         )
@@ -153,13 +169,45 @@ class IntegrationTest(unittest.IsolatedAsyncioTestCase):
             len(
                 entity_registry.async_entries_for_config_entry(registry, entry.entry_id)
             ),
-            6,
+            8,
         )
         self.devices = [self.devices[1]]
         await entry.runtime_data.async_refresh()
         await self.hass.async_block_till_done()
         self.assertFalse(camera.available)
         self.assertEqual(len(self.commands), 1)
+
+    async def test_courier_switch_commands_and_reset_after_call(self) -> None:
+        entry = await self._connect()
+        switch = next(iter(self._entities("switch").values()))
+        self.assertTrue(switch.available)
+        self.assertFalse(switch.is_on)
+        self.assertEqual(switch.unique_id, "test-addon-instance_123_courier")
+        await self.hass.services.async_call(
+            "switch", "turn_on", {"entity_id": switch.entity_id}, blocking=True
+        )
+        self.assertTrue(switch.is_on)
+        self.assertEqual(self.courier_commands, [{"deviceId": 123, "enabled": True}])
+        self.devices[0]["courierWaiting"] = False
+        self.calls.append(
+            {"id": "courier-call", "deviceId": 123, "timestamp": "2026-10-28T12:00:00Z"}
+        )
+        self.event_signal.set()
+        await self._wait(lambda: not switch.is_on)
+        self.assertEqual(self.hass.states.get(switch.entity_id).state, "off")
+        self.assertEqual(self.commands, [])
+        await switch.async_turn_on()
+        await switch.async_turn_off()
+        self.assertFalse(switch.is_on)
+        self.assertEqual(self.courier_commands[-1], {"deviceId": 123, "enabled": False})
+        self.status = 503
+        with self.assertRaises(BridgeError):
+            await switch.async_turn_on()
+        self.assertFalse(switch.is_on)
+        self.status = 200
+        del self.devices[0]["courierWaiting"]
+        await entry.runtime_data.async_refresh()
+        self.assertFalse(switch.available)
 
     async def test_calls_are_deduplicated_and_unload_cancels_subscription(self) -> None:
         entry = await self._connect()
@@ -279,6 +327,39 @@ class IntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(
             self.hass.states.get(event.entity_id).state, {"unknown", "unavailable"}
         )
+
+    async def test_brand_icon_and_all_fallbacks_are_served_locally(self) -> None:
+        from unittest.mock import patch
+
+        from aiohttp.test_utils import make_mocked_request
+        from homeassistant.components.brands import BrandsIntegrationView
+        from homeassistant.components.brands.const import ALLOWED_IMAGES
+        from homeassistant.components.http import KEY_AUTHENTICATED
+        from homeassistant.setup import async_setup_component
+
+        self.assertTrue(await async_setup_component(self.hass, "brands", {}))
+        integration = await loader.async_get_integration(self.hass, DOMAIN)
+        self.assertTrue(integration.has_branding)
+        expected = (Path(integration.file_path) / "brand" / "icon.png").read_bytes()
+        self.assertTrue(expected.startswith(b"\x89PNG\r\n\x1a\n"))
+        view = BrandsIntegrationView(self.hass)
+        cache = view._cache_dir / "integrations" / DOMAIN / "icon.png"
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(b"")
+        with patch.object(
+            view,
+            "_fetch_and_cache",
+            side_effect=AssertionError("Local branding must not use the CDN"),
+        ):
+            for image in ALLOWED_IMAGES:
+                request = make_mocked_request(
+                    "GET", f"/api/brands/integration/{DOMAIN}/{image}?placeholder=no"
+                )
+                request[KEY_AUTHENTICATED] = True
+                response = await view.get(request, DOMAIN, image)
+                self.assertEqual(response.status, 200, image)
+                self.assertEqual(response.content_type, "image/png", image)
+                self.assertEqual(response.body, expected, image)
 
     async def test_api_validation_and_authorization_failures(self) -> None:
         from homeassistant.helpers.aiohttp_client import async_get_clientsession

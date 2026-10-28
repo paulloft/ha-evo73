@@ -29,6 +29,7 @@ class Doorphone:
     address: str
     apartment: str | int | None
     entrance: str | int | None
+    courier_waiting: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +137,9 @@ class EvoApi:
                 _string(data.get("address")),
                 _attribute(data.get("apartment")),
                 _attribute(data.get("entrance")),
+                data.get("courierWaiting")
+                if type(data.get("courierWaiting")) is bool
+                else None,
             )
             devices[device.id] = device
         return devices
@@ -144,6 +148,17 @@ class EvoApi:
         await self._request(
             "POST", "open", payload={"deviceId": device_id, "doorNum": 1}
         )
+
+    async def set_courier(self, device_id: int, enabled: bool) -> bool:
+        body = _record(
+            await self._request(
+                "POST", "courier", payload={"deviceId": device_id, "enabled": enabled}
+            )
+        )
+        state = body.get("courierWaiting")
+        if type(state) is not bool:
+            raise BridgeError("Missing courier state in the EVO add-on response")
+        return state
 
     async def snapshot(self, device_id: int) -> bytes:
         image = await self._request(

@@ -7,6 +7,8 @@ import { getIntParam } from '../Utils/Params.js';
 import HttpException from '../Utils/HttpException.js';
 import Storage from '../Storage.js';
 import { callEvents } from './CallEvents.js';
+import { courierMode } from '../CourierMode.js';
+import { setCourierMode } from '../CourierRoutes.js';
 
 function requireAuthorization(): void {
   if (!isTokenProvided()) {
@@ -36,8 +38,10 @@ export function registerHomeAssistantRoutes(webserver: ReturnType<typeof createW
       address: device.address,
       apartment: device.apartment,
       entrance: device.entrance,
+      courierWaiting: courierMode.isWaiting(device.id),
     })) };
   });
+  webserver.add('post', '/ha/courier', setCourierMode);
   webserver.add('post', '/ha/open', params => {
     requireAuthorization();
     const deviceId = getIntParam(params, 'deviceId');

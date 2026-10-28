@@ -13,6 +13,7 @@ export interface Doorphone {
   snapshot?: string;
   door_open_url?: string;
   apartment_sip_settings?: SipSettings;
+  courierWaiting?: boolean;
 }
 
 export interface DevicesResponse {

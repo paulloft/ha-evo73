@@ -11,7 +11,7 @@ from .api import BridgeError, EvoApi
 from .const import DOMAIN
 from .coordinator import EvoCoordinator
 
-PLATFORMS = [Platform.BUTTON, Platform.CAMERA, Platform.EVENT]
+PLATFORMS = [Platform.BUTTON, Platform.CAMERA, Platform.EVENT, Platform.SWITCH]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 type EvoConfigEntry = ConfigEntry[EvoCoordinator]
 

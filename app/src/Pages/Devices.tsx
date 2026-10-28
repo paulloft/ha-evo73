@@ -1,6 +1,6 @@
 import type { DevicesResponse } from '../../../src/Types.js';
-import { useLoaderData } from 'react-router-dom';
-import { useState } from 'react';
+import { useLoaderData, useRevalidator } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { getUrl, sendRequest, errorMessage } from '../Utils';
 import VideoPlayer from 'app/Components/VideoPlayer';
 
@@ -9,6 +9,27 @@ export default function Devices() {
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const devices = useLoaderData<DevicesResponse>();
+  const { revalidate } = useRevalidator();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      revalidate().catch(error => setError(errorMessage(error)));
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [revalidate]);
+
+  const setCourier = (deviceId: number, enabled: boolean) => {
+    setLoaded(true);
+    setError('');
+    sendRequest('/courier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, enabled }),
+    })
+      .then(() => revalidate())
+      .catch(error => setError(errorMessage(error)))
+      .finally(() => setLoaded(false));
+  };
 
   const openDoor = (deviceId: number) => {
     setLoaded(true);
@@ -48,6 +69,19 @@ export default function Devices() {
                 <p className="card-text">
                   Вход {doorphone.entrance}
                 </p>
+                <div className="form-check form-switch mb-3">
+                  <input
+                    id={`courier-${doorphone.id}`}
+                    type="checkbox"
+                    role="switch"
+                    className="form-check-input"
+                    checked={doorphone.courierWaiting === true}
+                    disabled={loaded}
+                    onChange={event => setCourier(doorphone.id, event.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor={`courier-${doorphone.id}`}>Жду курьера</label>
+                  <div className="form-text">Открыть дверь при первом звонке и выключить режим.</div>
+                </div>
                 <button
                   type="button"
                   disabled={loaded}

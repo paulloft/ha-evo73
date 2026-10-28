@@ -10,6 +10,7 @@ import { getHeader } from '../src/Sip/Types.js';
 import type { Doorphone } from '../src/Types.js';
 import { sipServer, responseFor, invite, waitUntil } from './sip-fixture.js';
 import { callEvents } from '../src/HomeAssistant/CallEvents.js';
+import { courierMode } from '../src/CourierMode.js';
 
 const originalWebhook = process.env.APP_WEBHOOK_URL;
 let errors: string[];
@@ -21,6 +22,7 @@ beforeEach(() => {
   mock.method(Logger, 'error', (...args: unknown[]) => { errors.push(String(args[0])); });
 });
 afterEach(() => {
+  courierMode.setWaiting(123, false);
   SipAgent.stop();
   mock.restoreAll();
   if (originalWebhook === undefined) delete process.env.APP_WEBHOOK_URL;
@@ -33,6 +35,14 @@ test('SIP starts without a webhook and delivers one Home Assistant event per cal
     throw new Error('No HTTP webhook should be sent');
   });
   let registrations = 0;
+  let opens = 0;
+  let finishOpening: (() => void) | undefined;
+  context.mock.method(SecureApi, 'postJson', async (url: string) => {
+    assert.equal(url, 'doorphone://doorphone/123/open-door/1');
+    opens++;
+    await new Promise<void>(resolve => { finishOpening = resolve; });
+    return { status: true };
+  });
   const server = await sipServer((message, peer) => {
     if (message instanceof SipRequest && message.method === 'REGISTER') {
       registrations++;
@@ -49,15 +59,30 @@ test('SIP starts without a webhook and delivers one Home Assistant event per cal
     const initial = await callEvents.poll(null, signal);
     SipAgent.start();
     await waitUntil(() => registrations === 1);
+    courierMode.setWaiting(123, true);
     const peer = [...server.connections][0];
     peer.write(invite('ha-call').toString() + invite('ha-call').toString());
     const batch = await callEvents.poll(initial.cursor, signal);
     assert.equal(batch.events.length, 1);
     assert.equal(batch.events[0].deviceId, 123);
+    assert.equal(opens, 1);
+    assert.equal(courierMode.isWaiting(123), false);
+    // Rearming must not let retransmissions of the previous call consume permission.
+    courierMode.setWaiting(123, true);
+    peer.write(invite('ha-call').toString());
     await new Promise(resolve => setTimeout(resolve, 20));
     assert.equal((await callEvents.poll(initial.cursor, signal)).events.length, 1);
+    assert.equal(opens, 1);
+    assert.equal(courierMode.isWaiting(123), true);
+    finishOpening?.();
+    courierMode.setWaiting(123, false);
+    peer.write(invite('later-call').toString());
+    const later = await callEvents.poll(batch.cursor, AbortSignal.timeout(2000));
+    assert.equal(later.events.length, 1);
+    assert.equal(opens, 1);
     assert.equal(errors.length, 0);
   } finally {
+    finishOpening?.();
     SipAgent.stop();
     await server.close();
   }
@@ -75,6 +100,12 @@ test('failed initial device loading retries without another external start call'
 
 test('webhook rejection is caught, retransmissions do not duplicate it, and later calls still notify', async () => {
   let registrations = 0;
+  let opens = 0;
+  mock.method(SecureApi, 'postJson', async () => {
+    opens++;
+    throw new Error('Mock opening failure');
+  });
+  courierMode.setWaiting(123, true);
   const server = await sipServer((message, peer) => {
     if (message instanceof SipRequest && message.method === 'REGISTER') {
       registrations++;
@@ -98,9 +129,13 @@ test('webhook rejection is caught, retransmissions do not duplicate it, and late
     await waitUntil(() => notifications.length === 1);
     await new Promise(resolve => setTimeout(resolve, 20));
     assert.equal(notifications.length, 1);
+    assert.equal(opens, 1);
+    assert.equal(courierMode.isWaiting(123), false);
     assert.ok(errors.some(message => message.includes('webhook failed')));
+    assert.ok(errors.some(message => message.includes('door opening failed')));
     peer.write(invite('second').toString());
     await waitUntil(() => notifications.length === 2);
+    assert.equal(opens, 1);
     assert.equal((notifications[1] as { address: string }).address, 'Test address');
     assert.equal(registrations, 1);
   } finally { SipAgent.stop(); await server.close(); }

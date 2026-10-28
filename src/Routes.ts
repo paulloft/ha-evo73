@@ -6,6 +6,8 @@ import type { createWebserver } from './Webserver.js';
 import HttpException from './Utils/HttpException.js';
 import SipAgent from './SipAgent.js';
 import { registerHomeAssistantRoutes } from './HomeAssistant/Routes.js';
+import { courierMode } from './CourierMode.js';
+import { setCourierMode } from './CourierRoutes.js';
 
 export function registerRoutes(webserver: ReturnType<typeof createWebserver>): void {
   registerHomeAssistantRoutes(webserver);
@@ -23,7 +25,13 @@ export function registerRoutes(webserver: ReturnType<typeof createWebserver>): v
     return response;
   });
 
-  webserver.add('get', '/devices', () => getDevices());
+  webserver.add('get', '/devices', async () => {
+    const devices = await getDevices();
+    return { ...devices, doorphones: devices.doorphones.map(device => ({
+      ...device, courierWaiting: courierMode.isWaiting(device.id),
+    })) };
+  });
+  webserver.add('post', '/courier', setCourierMode);
   webserver.add('get', '/open', (params) => openDoor(
     getIntParam(params, 'deviceId'),
     getIntParam(params, 'doorNum') ?? 1,

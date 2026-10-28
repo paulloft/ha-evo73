@@ -31,7 +31,7 @@ test('registered application routes preserve device, stream and input validation
     const info = await (await fetch(`${base}/info`)).json() as { authorized: boolean };
     assert.equal(info.authorized, false);
     assert.equal((await fetch(`${base}/auth`)).status, 400);
-    assert.deepEqual(await (await fetch(`${base}/devices`)).json(), { doorphones: [{ id: 123, address: 'Test doorphone' }] });
+    assert.deepEqual(await (await fetch(`${base}/devices`)).json(), { doorphones: [{ id: 123, address: 'Test doorphone', courierWaiting: false }] });
     for (const path of ['/open?deviceId=NaN', '/open?deviceId=123&doorNum=-1']) {
       assert.equal((await fetch(base + path)).status, 400);
     }
@@ -80,13 +80,26 @@ test('Home Assistant API has stable identity, sanitized devices, POST commands a
     await once(server, 'listening');
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     assert.equal((await fetch(`${base}/ha/info`)).status, 401);
+    assert.equal((await fetch(`${base}/ha/courier`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: '{"deviceId":123,"enabled":true}',
+    })).status, 401);
     values.set('doorphone_token', 'test-only');
     const info = await (await fetch(`${base}/ha/info`)).json() as { instanceId: string; apiVersion: number };
     assert.equal(info.apiVersion, 1);
     assert.ok(info.instanceId);
     assert.deepEqual(await (await fetch(`${base}/ha/info`)).json(), info);
     const devices = await (await fetch(`${base}/ha/devices`)).json();
-    assert.deepEqual(devices, { devices: [{ id: 123, address: 'Test', apartment: 42 }] });
+    assert.deepEqual(devices, { devices: [{ id: 123, address: 'Test', apartment: 42, courierWaiting: false }] });
+    const courier = (path: string, body: object) => fetch(`${base}${path}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    assert.equal((await courier('/ha/courier', { deviceId: 123, enabled: 'false' })).status, 400);
+    assert.equal((await courier('/ha/courier', { enabled: true })).status, 400);
+    assert.equal((await courier('/ha/courier', { deviceId: 999, enabled: true })).status, 404);
+    assert.deepEqual(await (await courier('/ha/courier', { deviceId: 123, enabled: true })).json(), { courierWaiting: true });
+    const armed = await (await fetch(`${base}/devices`)).json() as { doorphones: { courierWaiting: boolean }[] };
+    assert.equal(armed.doorphones[0].courierWaiting, true);
     const stream = await (await fetch(`${base}/ha/stream?deviceId=123`)).json();
     assert.deepEqual(stream, { url: 'https://camera.invalid/live?token=test' });
     const missing = await fetch(`${base}/ha/open`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
@@ -105,6 +118,10 @@ test('Home Assistant API has stable identity, sanitized devices, POST commands a
     const simulatedEvents = await (await fetch(`${base}/ha/events?cursor=${encodeURIComponent(event.id)}`)).json() as { events: { deviceId: number }[] };
     assert.equal(simulatedEvents.events.length, 1);
     assert.equal(simulatedEvents.events[0].deviceId, 123);
+    const afterSimulation = await (await fetch(`${base}/ha/devices`)).json() as { devices: { courierWaiting: boolean }[] };
+    assert.equal(afterSimulation.devices[0].courierWaiting, true);
+    assert.equal(opened.length, 1);
+    assert.deepEqual(await (await courier('/courier', { deviceId: 123, enabled: false })).json(), { courierWaiting: false });
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     if (originalPort === undefined) {

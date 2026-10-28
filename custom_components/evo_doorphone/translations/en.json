@@ -50,6 +50,11 @@
           }
         }
       }
+    },
+    "switch": {
+      "courier": {
+        "name": "Waiting for courier"
+      }
     }
   }
 }
