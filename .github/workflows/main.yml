@@ -88,6 +88,79 @@ jobs:
             exit 1
           fi
 
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate release versions and prepare changelog
+        id: release_metadata
+        env:
+          ADDON_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          addon_version = os.environ['ADDON_VERSION']
+          integration = Path('custom_components/evo_doorphone')
+          version = json.loads((integration / 'manifest.json').read_text())['version']
+          for value in (addon_version, version):
+              if not re.fullmatch(r'\d+\.\d+\.\d+', value):
+                  raise SystemExit('Expected a stable release version: major.minor.patch')
+          for filename in ('package.json', 'app/package.json'):
+              if json.loads(Path(filename).read_text())['version'] != addon_version:
+                  raise SystemExit(f'{filename}: version does not match config.yaml')
+
+          def release_notes(path, release_version):
+              section = re.search(
+                  rf'^## {re.escape(release_version)}[ \t]*\n(.*?)(?=^## |\Z)',
+                  path.read_text(),
+                  re.MULTILINE | re.DOTALL,
+              )
+              if section is None or not section.group(1).strip():
+                  raise SystemExit(f'{path}: missing release notes for {release_version}')
+              return section.group(1).strip() + '\n'
+
+          release_notes(Path('CHANGELOG.md'), addon_version)
+          notes = release_notes(integration / 'CHANGELOG.md', version)
+          (Path(os.environ['RUNNER_TEMP']) / 'evo-release-notes.md').write_text(notes)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print(f'version={version}', file=output)
+          PY
+
+      - name: Publish GitHub release for HACS
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release_metadata.outputs.version }}
+        run: |
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            if ! git diff --quiet "refs/tags/$VERSION" HEAD -- custom_components/evo_doorphone; then
+              echo '::error::The integration changed: bump its manifest version and add its changelog entry.'
+              exit 1
+            fi
+            body=$(gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" --json body --jq '.body')
+            if [ -z "$body" ]; then
+              gh release edit "$VERSION" --repo "$GITHUB_REPOSITORY" \
+                --notes-file "$RUNNER_TEMP/evo-release-notes.md"
+            else
+              echo "Release $VERSION already has notes; keeping it unchanged."
+            fi
+            exit 0
+          fi
+          gh release create "$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "EVO $VERSION" \
+            --notes-file "$RUNNER_TEMP/evo-release-notes.md"
+
   update:
     needs: build
     runs-on: ubuntu-latest
