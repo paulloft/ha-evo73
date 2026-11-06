@@ -18,6 +18,7 @@ const HEADER_NAMES: Readonly<Record<string, string>> = {
   'content-length': 'Content-Length',
   l: 'Content-Length',
   'record-route': 'Record-Route',
+  route: 'Route',
 };
 
 export function parseMessage(message: string): [string, SipHeaders, string] {
@@ -36,7 +37,7 @@ export function parseMessage(message: string): [string, SipHeaders, string] {
     const value = match[2].trim();
     if (header === 'Content-Length') {
       headers[header] = Number(value);
-    } else if (['Via', 'Record-Route', 'Contact'].includes(header)) {
+    } else if (['Via', 'Record-Route', 'Route', 'Contact'].includes(header)) {
       headers[header] = [...getHeaderValues(headers, header), value];
     } else {
       headers[header] = value;

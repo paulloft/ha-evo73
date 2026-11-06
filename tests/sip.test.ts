@@ -8,7 +8,7 @@ import { createAuthRequest, createRegisterRequest } from '../src/Sip/Messages/Re
 import { createOkResponse } from '../src/Sip/Messages/ResponseMessages.js';
 import { getHeader, getHeaderValues } from '../src/Sip/Types.js';
 import type { SipConfig, ClientOptions } from '../src/Sip/Types.js';
-import { sipServer, responseFor, invite, waitUntil } from './sip-fixture.js';
+import { sipServer, responseFor, invite, waitUntil, ackFor } from './sip-fixture.js';
 
 const config = (): SipConfig => ({ username: 'user', password: 'test-only', serverHost: '127.0.0.1', serverPort: 5070, clientIp: '127.0.0.1', clientPort: 1234 });
 const options = (port: number): ClientOptions => ({ username: 'user', password: 'test-only', login: 'user@account.domain', serverHost: '127.0.0.1', serverPort: port, reconnectDelayMs: 15, requestTimeoutMs: 80, refreshIntervalMs: 10000 });
@@ -165,9 +165,11 @@ test('INVITE during digest registration rings without answering, deduplicates no
   } finally { client.stop(); await server.close(); }
 });
 
-test('declining ringing calls keeps final responses across retransmissions, ACK and CANCEL', async () => {
+test('answer-and-hangup waits for matching ACK, sends one routed BYE and remembers the final response', async () => {
   const server = await sipServer((message, peer) => {
     if (message instanceof SipRequest && message.method === 'REGISTER') {
+      peer.write(responseFor(message).toString());
+    } else if (message instanceof SipRequest && message.method === 'BYE') {
       peer.write(responseFor(message).toString());
     }
   });
@@ -178,37 +180,51 @@ test('declining ringing calls keeps final responses across retransmissions, ACK 
   try {
     await client.register();
     const peer = [...server.connections][0];
-    client.declineCalls();
+    client.endCalls();
     peer.write(invite('active').toString() + invite('cancelled').toString() + invite('ended').toString());
     await waitUntil(() => responses().length === 3);
     const ringing = responses()[0];
     peer.write(invite('cancelled', 'CANCEL').toString() + invite('ended', 'BYE').toString());
     await waitUntil(() => responses().length === 6);
-    client.declineCalls();
-    client.declineCalls();
+    client.endCalls();
+    client.endCalls();
     await waitUntil(() => responses().length === 7);
-    const declined = responses()[6];
-    assert.equal(declined.statusCode, 603);
-    assert.equal(declined.statusName, 'Decline');
+    const accepted = responses()[6];
+    assert.equal(accepted.statusCode, 200);
+    assert.equal(getHeader(accepted.headers, 'Content-Type'), 'application/sdp');
+    assert.match(accepted.body, /a=inactive\r\n/);
+    assert.match(accepted.body, /m=audio [1-9]\d* RTP\/AVP 0 8/);
     for (const header of ['Call-ID', 'From', 'To', 'CSeq', 'Via', 'Record-Route']) {
-      assert.deepEqual(getHeaderValues(declined.headers, header), getHeaderValues(ringing.headers, header));
+      assert.deepEqual(getHeaderValues(accepted.headers, header), getHeaderValues(ringing.headers, header));
     }
-    peer.write(invite('active', 'ACK').toString() + invite('active', 'CANCEL').toString() + invite('active').toString());
+    const wrongAck = ackFor(accepted);
+    wrongAck.headers.To = '<sip:user@localhost>;tag=other';
+    peer.write(wrongAck.toString());
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.ok(!server.messages.some(message => message instanceof SipRequest && message.method === 'BYE'));
+    peer.write(ackFor(accepted).toString() + ackFor(accepted).toString() + invite('active', 'CANCEL').toString() + invite('active').toString());
     await waitUntil(() => responses().length === 9);
-    assert.deepEqual(responses().slice(7).map(response => response.statusCode), [200, 603]);
+    assert.deepEqual(responses().slice(7).map(response => response.statusCode), [200, 200]);
+    await waitUntil(() => server.messages.some(message => message instanceof SipRequest && message.method === 'BYE'));
+    const byes = server.messages.filter((message): message is SipRequest => message instanceof SipRequest && message.method === 'BYE');
+    assert.equal(byes.length, 1);
+    assert.equal(byes[0].requestUri, 'sip:door@localhost;transport=tcp');
+    assert.equal(getHeader(byes[0].headers, 'From'), getHeader(accepted.headers, 'To'));
+    assert.equal(getHeader(byes[0].headers, 'To'), getHeader(accepted.headers, 'From'));
+    assert.equal(getHeader(byes[0].headers, 'Call-ID'), 'active');
+    assert.deepEqual(getHeaderValues(byes[0].headers, 'Route'), ['<sip:proxy1;lr>', '<sip:proxy2;lr>']);
     assert.equal(notifications, 3);
     peer.destroy();
     await waitUntil(() => server.messages.filter(message => message instanceof SipRequest && message.method === 'REGISTER').length === 2);
     const replacement = [...server.connections][0];
     replacement.write(invite('active').toString());
     await waitUntil(() => responses().length === 10);
-    assert.equal(responses()[9].statusCode, 603);
+    assert.equal(responses()[9].statusCode, 200);
     assert.equal(notifications, 3);
     replacement.write(invite('next').toString());
     await waitUntil(() => responses().length === 11);
     assert.equal(responses()[10].statusCode, 180);
     assert.equal(notifications, 4);
-    assert.ok(!responses().some(response => response.statusCode === 200 && getHeader(response.headers, 'CSeq').endsWith('INVITE')));
   } finally {
     client.stop();
     await server.close();

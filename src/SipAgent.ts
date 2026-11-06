@@ -1,7 +1,7 @@
 import type { Doorphone, SipSettings } from './Types.js';
 import type SipRequest from './Sip/Messages/SipRequest.js';
 import { getDevices } from './Evo/DoorPhone.js';
-import SipClient, { EVENT_INVITE, EVENT_REGISTER, EVENT_REGISTRATION_ERROR } from './Sip/SipClient.js';
+import SipClient, { EVENT_INVITE, EVENT_REGISTER, EVENT_REGISTRATION_ERROR, EVENT_CALL_ERROR, EVENT_CALL_ENDED } from './Sip/SipClient.js';
 import { isTokenProvided } from './Evo/SecureApi.js';
 import { handleIncomingCall } from './Actions.js';
 import { RECONNECT_TIMEOUT } from './Sip/Constants.js';
@@ -19,7 +19,7 @@ interface ManagedClient {
 
 const MAX_NOTIFIED_CALLS = 1000;
 const clients = new Map<number, ManagedClient>();
-doorEvents.on('opened', deviceId => clients.get(deviceId)?.client.declineCalls());
+doorEvents.on('opened', deviceId => clients.get(deviceId)?.client.endCalls());
 let starting: Promise<void> | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let enabled = false;
@@ -88,6 +88,8 @@ function connectSocket(doorphone: Doorphone): ManagedClient['client'] | undefine
   clients.set(doorphone.id, managed);
   client.on(EVENT_REGISTER, () => Logger.info(`SIP ${doorphone.id}: registered over TCP`));
   client.on(EVENT_REGISTRATION_ERROR, error => Logger.error(`SIP ${doorphone.id}: ${error.message}; reconnecting`));
+  client.on(EVENT_CALL_ERROR, error => Logger.error(`SIP ${doorphone.id}: call hangup error`, error.message));
+  client.on(EVENT_CALL_ENDED, () => Logger.info(`SIP ${doorphone.id}: call hangup confirmed by server`));
   client.on(EVENT_INVITE, request => notifyIncomingCall(managed, request));
   void client.register().catch(() => {
     // SipClient reports the error and schedules another registration attempt.

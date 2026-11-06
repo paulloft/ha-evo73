@@ -31,6 +31,7 @@ export interface ClientOptions extends Pick<SipConfig, 'username' | 'password' |
   requestTimeoutMs?: number;
   reconnectDelayMs?: number;
   refreshIntervalMs?: number;
+  callAckTimeoutMs?: number;
 }
 
 export function getHeaderValues(headers: SipHeaders, name: string): string[] {

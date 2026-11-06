@@ -8,19 +8,23 @@ import { createAuthRequest, createRegisterRequest } from './Messages/RequestMess
 import { createResponse } from './Messages/ResponseMessages.js';
 import { KEEPALIVE_INTERVAL, RECONNECT_TIMEOUT, SERVER_PORT, REQUEST_TIMEOUT } from './Constants.js';
 import SipSocket, { EVENT_CLOSE_CONNECTION, EVENT_CONNECT_ERROR, EVENT_REQUEST, EVENT_ERROR } from './SipSocket.js';
+import { CallHangup } from './CallHangup.js';
 
 export const EVENT_INVITE = 'invite';
 export const EVENT_BYE = 'bye';
 export const EVENT_REGISTER = 'register';
 export const EVENT_CLOSE = 'close';
 export const EVENT_REGISTRATION_ERROR = 'registrationError';
+export const EVENT_CALL_ERROR = 'callError';
+export const EVENT_CALL_ENDED = 'callEnded';
 
 const MAX_TRACKED_CALLS = 100;
 
 interface IncomingCall {
   request: SipRequest;
   tag: string;
-  status: 180 | 487 | 603;
+  status: 180 | 200 | 487 | 603;
+  hangup?: CallHangup;
 }
 
 interface ClientEvents {
@@ -29,6 +33,8 @@ interface ClientEvents {
   register: [SipResponse];
   close: [];
   registrationError: [Error];
+  callError: [Error];
+  callEnded: [];
 }
 
 export default function SipClient(options: ClientOptions) {
@@ -112,6 +118,9 @@ export default function SipClient(options: ClientOptions) {
       throw new Error('SIP client is stopped');
     }
     schedule(refreshDelay(response));
+    for (const call of calls.values()) {
+      call.hangup?.resume();
+    }
     eventBus.emit(EVENT_REGISTER, response);
     return response;
   }
@@ -148,15 +157,30 @@ export default function SipClient(options: ClientOptions) {
     void socket.sendMessage(createResponse(code, request, {}, '', tag)).catch(reconnect);
   }
 
-  function declineCalls(): void {
+  function endCalls(): void {
     if (stopped) {
       return;
     }
     for (const call of calls.values()) {
       if (call.status === 180) {
-        // A global rejection also stops other forked destinations ringing.
-        call.status = 603;
-        reply(603, call.request, call.tag);
+        // Explicit exception: answer only after a successful door-opening command.
+        call.status = 200;
+        const reportError = (error: unknown) => {
+          if (!stopped) {
+            eventBus.emit(EVENT_CALL_ERROR, error instanceof Error ? error : new Error('SIP call hangup failed'));
+          }
+        };
+        const hangup = new CallHangup(socket, config, call.request, call.tag, reportError,
+          () => eventBus.emit(EVENT_CALL_ENDED), options.callAckTimeoutMs);
+        call.hangup = hangup;
+        void hangup.start().catch((error: unknown) => {
+          hangup.dispose();
+          if (!stopped && call.status === 200 && !hangup.answered) {
+            call.status = 603;
+            reply(603, call.request, call.tag);
+          }
+          reportError(error);
+        });
       }
     }
   }
@@ -170,7 +194,11 @@ export default function SipClient(options: ClientOptions) {
     const tag = existing?.tag || generateBranch();
     switch (request.method) {
       case 'INVITE':
-        // Observe the call. A 200 here would answer it and stop the phone ringing.
+        if (existing?.hangup && existing.status === 200) {
+          existing.hangup.replyInvite(request);
+          break;
+        }
+        // Ordinary incoming calls are observed, never answered automatically.
         reply(existing?.status ?? 180, request, tag);
         if (existing?.status === 180) {
           existing.request = request;
@@ -180,6 +208,7 @@ export default function SipClient(options: ClientOptions) {
           if (calls.size > MAX_TRACKED_CALLS) {
             const oldest = calls.keys().next().value;
             if (oldest !== undefined) {
+              calls.get(oldest)?.hangup?.dispose();
               calls.delete(oldest);
             }
           }
@@ -188,13 +217,15 @@ export default function SipClient(options: ClientOptions) {
         break;
       case 'CANCEL':
         reply(200, request, tag);
-        if (existing?.status === 180) {
+        if (existing && (existing.status === 180 || (existing.status === 200 && !existing.hangup?.answered))) {
+          existing.hangup?.dispose();
           existing.status = 487;
           reply(487, existing.request, tag);
         }
         break;
       case 'BYE':
-        if (existing?.status === 180) {
+        existing?.hangup?.dispose();
+        if (existing && (existing.status === 180 || (existing.status === 200 && !existing.hangup?.answered))) {
           existing.status = 487;
         }
         reply(200, request, tag);
@@ -207,6 +238,7 @@ export default function SipClient(options: ClientOptions) {
         reply(200, request, tag);
         break;
       case 'ACK':
+        existing?.hangup?.acknowledge(request);
         break;
       default:
         reply(405, request, tag);
@@ -214,6 +246,14 @@ export default function SipClient(options: ClientOptions) {
   });
 
   socket.on(EVENT_CLOSE_CONNECTION, () => {
+    for (const call of calls.values()) {
+      if (call.hangup?.answered) {
+        call.hangup.suspend();
+      } else if (call.hangup) {
+        call.hangup.dispose();
+        call.status = 603;
+      }
+    }
     clearTimer();
     if (!stopped) {
       schedule(options.reconnectDelayMs ?? RECONNECT_TIMEOUT);
@@ -234,9 +274,12 @@ export default function SipClient(options: ClientOptions) {
   function stop(): void {
     stopped = true;
     clearTimer();
+    for (const call of calls.values()) {
+      call.hangup?.dispose();
+    }
     socket.close();
     calls.clear();
   }
 
-  return { register, stop, declineCalls, socket, on: eventBus.on.bind(eventBus), once: eventBus.once.bind(eventBus) };
+  return { register, stop, endCalls, socket, on: eventBus.on.bind(eventBus), once: eventBus.once.bind(eventBus) };
 }

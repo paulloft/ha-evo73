@@ -25,8 +25,29 @@ export function invite(id: string, method = 'INVITE'): SipRequest {
   return new SipRequest({ method, requestUri: 'sip:user@localhost', headers: {
     'Call-ID': id, CSeq: `42 ${method}`, Via: ['SIP/2.0/TCP localhost;branch=branch'],
     From: '<sip:door@localhost>;tag=door', To: '<sip:user@localhost>',
+    Contact: '<sip:door@localhost;transport=tcp>',
     'Record-Route': ['<sip:proxy1;lr>', '<sip:proxy2;lr>'],
   } });
+}
+
+export function ackFor(response: SipResponse): SipRequest {
+  const request = invite(getHeader(response.headers, 'Call-ID'), 'ACK');
+  request.headers.From = getHeader(response.headers, 'From');
+  request.headers.To = getHeader(response.headers, 'To');
+  request.headers.CSeq = `${getHeader(response.headers, 'CSeq').split(/\s+/)[0]} ACK`;
+  return request;
+}
+
+export function completeHangup(message: SipRequest | SipResponse, peer: Socket): boolean {
+  if (message instanceof SipResponse && message.statusCode === 200 && getHeader(message.headers, 'CSeq').endsWith(' INVITE')) {
+    peer.write(ackFor(message).toString());
+    return true;
+  }
+  if (message instanceof SipRequest && message.method === 'BYE') {
+    peer.write(responseFor(message).toString());
+    return true;
+  }
+  return false;
 }
 
 export async function sipServer(handle: (message: SipRequest | SipResponse, socket: Socket) => void) {

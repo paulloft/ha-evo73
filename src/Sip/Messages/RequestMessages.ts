@@ -6,6 +6,11 @@ import { createDigestAuthorization } from '../Digest.js';
 import SipRequest from './SipRequest.js';
 import { EXPIRES, PROTOCOL, TRANSPORT, USER_AGENT } from '../Constants.js';
 
+export function createContactHeader(config: SipConfig): string {
+  const address = config.clientIp.includes(':') ? `[${config.clientIp}]` : config.clientIp;
+  return `<sip:${config.username}@${address}:${config.clientPort};transport=${TRANSPORT}>`;
+}
+
 export function createRequest(config: SipConfig, method: string, headers: SipHeaders, body = ''): SipRequest {
   const methodName = method.toUpperCase();
   config.sequence = (config.sequence || 0) + 1;
@@ -17,7 +22,7 @@ export function createRequest(config: SipConfig, method: string, headers: SipHea
     requestUri: `sip:${config.serverHost}:${config.serverPort}`,
     headers: {
       Via: `${PROTOCOL}/${TRANSPORT.toUpperCase()} ${config.clientIp}:${config.clientPort};branch=${generateBranch()};rport`,
-      Contact: `<sip:${config.username}@${config.clientIp}:${config.clientPort};transport=${TRANSPORT}>`,
+      Contact: createContactHeader(config),
       From: `<sip:${login}>;tag=${config.fromTag}`,
       To: `<sip:${login}>`,
       'Call-ID': config.callId,

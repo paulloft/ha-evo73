@@ -24,6 +24,7 @@ export const RESPONSES: Record<number, string> = {
   407: 'Proxy Authentication Required',
   408: 'Request Timeout',
   480: 'Temporarily Unavailable',
+  481: 'Call/Transaction Does Not Exist',
   486: 'Busy Here',
   487: 'Request Terminated',
   488: 'Not Acceptable Here',

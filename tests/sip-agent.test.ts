@@ -9,7 +9,7 @@ import SipRequest from '../src/Sip/Messages/SipRequest.js';
 import SipResponse from '../src/Sip/Messages/SipResponse.js';
 import { getHeader } from '../src/Sip/Types.js';
 import type { Doorphone } from '../src/Types.js';
-import { sipServer, responseFor, invite, waitUntil } from './sip-fixture.js';
+import { sipServer, responseFor, invite, waitUntil, completeHangup } from './sip-fixture.js';
 import { callEvents } from '../src/HomeAssistant/CallEvents.js';
 import { courierMode } from '../src/CourierMode.js';
 import { openDoor } from '../src/Evo/DoorPhone.js';
@@ -46,6 +46,9 @@ test('SIP starts without a webhook and delivers one Home Assistant event per cal
     return { status: true };
   });
   const server = await sipServer((message, peer) => {
+    if (completeHangup(message, peer)) {
+      return;
+    }
     if (message instanceof SipRequest && message.method === 'REGISTER') {
       registrations++;
       peer.write(responseFor(message).toString());
@@ -76,10 +79,11 @@ test('SIP starts without a webhook and delivers one Home Assistant event per cal
     assert.equal((await callEvents.poll(initial.cursor, signal)).events.length, 1);
     assert.equal(opens, 1);
     assert.equal(courierMode.isWaiting(123), true);
-    assert.ok(!server.messages.some(message => message instanceof SipResponse && message.statusCode === 603));
+    assert.ok(!server.messages.some(message => message instanceof SipResponse && message.statusCode === 200 && getHeader(message.headers, 'CSeq').endsWith(' INVITE')));
     finishOpening?.();
     await waitUntil(() => server.messages.some(message => message instanceof SipResponse
-      && message.statusCode === 603 && getHeader(message.headers, 'Call-ID') === 'ha-call'));
+      && message.statusCode === 200 && getHeader(message.headers, 'CSeq') === '42 INVITE' && getHeader(message.headers, 'Call-ID') === 'ha-call'));
+    await waitUntil(() => server.messages.some(message => message instanceof SipRequest && message.method === 'BYE'));
     courierMode.setWaiting(123, false);
     peer.write(invite('later-call').toString());
     const later = await callEvents.poll(batch.cursor, AbortSignal.timeout(2000));
@@ -103,10 +107,13 @@ test('failed initial device loading retries without another external start call'
   await waitUntil(() => attempts === 2, 6500);
 });
 
-test('only successful door opening declines the matching doorphone and future calls still ring', async () => {
+test('only successful door opening answers and hangs up the matching doorphone; future calls still ring', async () => {
   delete process.env.APP_WEBHOOK_URL;
   const peers: Socket[] = [];
   const server = await sipServer((message, peer) => {
+    if (completeHangup(message, peer)) {
+      return;
+    }
     if (message instanceof SipRequest && message.method === 'REGISTER') {
       peers.push(peer);
       peer.write(responseFor(message).toString());
@@ -132,17 +139,18 @@ test('only successful door opening declines the matching doorphone and future ca
     peers[1].write(invite('other-door').toString());
     await waitUntil(() => responses().length === 2);
     await assert.rejects(openDoor(123), /Opening rejected/);
-    assert.ok(!responses().some(response => response.statusCode === 603));
+    assert.ok(!responses().some(response => response.statusCode === 200));
     fail = false;
     await openDoor(123);
     await waitUntil(() => responses().length === 3);
-    assert.equal(responses()[2].statusCode, 603);
+    assert.equal(responses()[2].statusCode, 200);
     assert.equal(getHeader(responses()[2].headers, 'Call-ID'), 'first-door');
     await openDoor(123);
     peers[0].write(invite('first-door').toString() + invite('new-call').toString());
     await waitUntil(() => responses().length === 5);
-    assert.deepEqual(responses().slice(3).map(response => response.statusCode), [603, 180]);
-    assert.ok(!responses().some(response => response.statusCode === 603 && getHeader(response.headers, 'Call-ID') === 'other-door'));
+    assert.deepEqual(responses().slice(3).map(response => response.statusCode), [200, 180]);
+    assert.ok(!responses().some(response => response.statusCode === 200 && getHeader(response.headers, 'Call-ID') === 'other-door'));
+    assert.equal(server.messages.filter(message => message instanceof SipRequest && message.method === 'BYE').length, 1);
   } finally {
     SipAgent.stop();
     await server.close();
@@ -182,7 +190,7 @@ test('webhook rejection is caught, retransmissions do not duplicate it, and late
     assert.equal(notifications.length, 1);
     assert.equal(opens, 1);
     assert.equal(courierMode.isWaiting(123), false);
-    assert.ok(!server.messages.some(message => message instanceof SipResponse && message.statusCode === 603));
+    assert.ok(!server.messages.some(message => message instanceof SipResponse && message.statusCode === 200 && getHeader(message.headers, 'CSeq').endsWith(' INVITE')));
     assert.ok(errors.some(message => message.includes('webhook failed')));
     assert.ok(errors.some(message => message.includes('door opening failed')));
     peer.write(invite('second').toString());
